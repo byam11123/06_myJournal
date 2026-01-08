@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 import { hash } from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -15,9 +15,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if demo user already exists
-    const existingUser = await db.user.findFirst({
-      where: { username: 'demo' }
-    })
+    const { data: existingUser, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .eq('username', 'demo')
+      .single()
 
     if (existingUser) {
       return NextResponse.json({
@@ -33,14 +35,26 @@ export async function POST(request: NextRequest) {
 
     // Create demo user
     const hashedPassword = await hash('demo123', 10)
-    const user = await db.user.create({
-      data: {
-        username: 'demo',
-        email: 'demo@example.com',
-        name: 'Demo User',
-        password: hashedPassword
-      }
-    })
+    const { data: user, error: insertError } = await supabase
+      .from('users')
+      .insert([
+        {
+          username: 'demo',
+          email: 'demo@example.com',
+          name: 'Demo User',
+          password: hashedPassword
+        }
+      ])
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Insert error:', insertError)
+      return NextResponse.json(
+        { error: 'Failed to create demo user' },
+        { status: 500 }
+      )
+    }
 
     // Create demo data for demo user
     await createDemoData(user.id)
@@ -65,85 +79,95 @@ export async function POST(request: NextRequest) {
 
 async function createDemoData(userId: string) {
   // Create demo goals
-  const demoGoals = await Promise.all([
-    db.goal.create({
-      data: {
+  const { data: demoGoals, error: goalsError } = await supabase
+    .from('goals')
+    .insert([
+      {
         title: 'Learn JavaScript',
         description: 'Master modern JavaScript and frameworks',
         category: 'Learning',
         status: 'Active',
-        targetDate: new Date('2025-12-31'),
-        userId
-      }
-    }),
-    db.goal.create({
-      data: {
+        target_date: new Date('2025-12-31'),
+        user_id: userId
+      },
+      {
         title: 'Get Fit',
         description: 'Achieve optimal fitness and health',
         category: 'Health',
         status: 'Active',
-        targetDate: new Date('2025-06-30'),
-        userId
-      }
-    }),
-    db.goal.create({
-      data: {
+        target_date: new Date('2025-06-30'),
+        user_id: userId
+      },
+      {
         title: 'Save Money',
         description: 'Build emergency fund and investments',
         category: 'Finance',
         status: 'Active',
-        targetDate: new Date('2025-12-31'),
-        userId
+        target_date: new Date('2025-12-31'),
+        user_id: userId
       }
-    })
-  ])
+    ])
+    .select()
+
+  if (goalsError) {
+    console.error('Goals creation error:', goalsError)
+    return
+  }
 
   // Create demo tasks
-  await Promise.all([
-    db.task.create({
-      data: {
+  const { error: tasksError } = await supabase
+    .from('tasks')
+    .insert([
+      {
         title: 'Complete React tutorial',
         description: 'Follow online React course and build projects',
         date: new Date().toISOString().split('T')[0],
         time: '10:00',
         completed: true,
-        goalId: demoGoals[0].id,
-        userId
-      }
-    }),
-    db.task.create({
-      data: {
+        goal_id: demoGoals[0].id,
+        user_id: userId
+      },
+      {
         title: 'Morning workout',
         description: '30 minutes cardio and strength training',
         date: new Date().toISOString().split('T')[0],
         time: '07:00',
         completed: false,
-        goalId: demoGoals[1].id,
-        userId
-      }
-    }),
-    db.task.create({
-      data: {
+        goal_id: demoGoals[1].id,
+        user_id: userId
+      },
+      {
         title: 'Save $100',
         description: 'Transfer $100 to savings account',
         date: new Date().toISOString().split('T')[0],
         time: '18:00',
         completed: false,
-        goalId: demoGoals[2].id,
-        userId
+        goal_id: demoGoals[2].id,
+        user_id: userId
       }
-    })
-  ])
+    ])
+
+  if (tasksError) {
+    console.error('Tasks creation error:', tasksError)
+    return
+  }
 
   // Create demo reminder
-  await db.reminder.create({
-    data: {
-      title: 'Workout reminder',
-      message: 'Time for your morning workout!',
-      date: new Date().toISOString().split('T')[0],
-      time: '06:55',
-      type: 'browser',
-      userId
-    }
-  })
+  const { error: reminderError } = await supabase
+    .from('reminders')
+    .insert([
+      {
+        title: 'Workout reminder',
+        message: 'Time for your morning workout!',
+        date: new Date().toISOString().split('T')[0],
+        time: '06:55',
+        type: 'browser',
+        user_id: userId
+      }
+    ])
+
+  if (reminderError) {
+    console.error('Reminder creation error:', reminderError)
+    return
+  }
 }

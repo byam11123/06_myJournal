@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 import { compare } from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -16,21 +16,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by username or email
-    const user = await db.user.findFirst({
-      where: {
-        OR: [
-          { username },
-          { email: username }
-        ]
-      }
-    })
+    const { data: users, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .or(`username.eq.${username},email.eq.${username}`)
 
-    if (!user) {
+    if (!users || users.length === 0) {
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       )
     }
+
+    const user = users[0]
 
     // Verify password
     const isValidPassword = await compare(password, user.password)
@@ -49,7 +47,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         email: user.email,
         name: user.name,
-        createdAt: user.createdAt
+        createdAt: user.created_at
       }
     })
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 
 // DELETE a reminder
 export async function DELETE(
@@ -7,9 +7,20 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await db.reminder.delete({
-      where: { id: params.id }
-    })
+    const { id } = params
+
+    const { error } = await supabase
+      .from('reminders')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Delete reminder error:', error)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

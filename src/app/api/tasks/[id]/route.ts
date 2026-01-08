@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 
 // PUT update task
 export async function PUT(
@@ -11,16 +11,26 @@ export async function PUT(
     const { id } = params
     const { title, description, date, time, goalId } = body
 
-    const task = await db.task.update({
-      where: { id },
-      data: {
+    const { data: task, error } = await supabase
+      .from('tasks')
+      .update({
         title,
         description,
         date,
         time,
-        goalId
-      }
-    })
+        goal_id: goalId
+      })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('PUT task error:', error)
+      return NextResponse.json(
+        { error: 'Failed to update task' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ task })
   } catch (error) {
@@ -55,10 +65,20 @@ export async function PATCH(
 
     console.log('Updating task:', id, 'completed:', completed)
 
-    const task = await db.task.update({
-      where: { id },
-      data: { completed }
-    })
+    const { data: task, error } = await supabase
+      .from('tasks')
+      .update({ completed })
+      .eq('id', id)
+      .select()
+      .single()
+
+    if (error) {
+      console.error('PATCH task error:', error)
+      return NextResponse.json(
+        { error: error.message || 'Failed to toggle task' },
+        { status: 500 }
+      )
+    }
 
     console.log('Updated task:', task)
 
@@ -80,9 +100,18 @@ export async function DELETE(
   try {
     const { id } = params
 
-    await db.task.delete({
-      where: { id }
-    })
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('DELETE task error:', error)
+      return NextResponse.json(
+        { error: 'Failed to delete task' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 import { hash } from 'bcryptjs'
 
 export async function POST(request: NextRequest) {
@@ -16,16 +16,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await db.user.findFirst({
-      where: {
-        OR: [
-          { username },
-          { email }
-        ]
-      }
-    })
+    const { data: existingUsers, error: fetchError } = await supabase
+      .from('users')
+      .select('*')
+      .or(`username.eq.${username},email.eq.${email}`)
 
-    if (existingUser) {
+    if (existingUsers && existingUsers.length > 0) {
       return NextResponse.json(
         { error: 'Username or email already exists' },
         { status: 409 }
@@ -36,14 +32,26 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await hash(password, 10)
 
     // Create user
-    const user = await db.user.create({
-      data: {
-        username,
-        email,
-        name,
-        password: hashedPassword
-      }
-    })
+    const { data: user, error: insertError } = await supabase
+      .from('users')
+      .insert([
+        {
+          username,
+          email,
+          name,
+          password: hashedPassword
+        }
+      ])
+      .select()
+      .single()
+
+    if (insertError) {
+      console.error('Insert error:', insertError)
+      return NextResponse.json(
+        { error: 'Failed to create user' },
+        { status: 500 }
+      )
+    }
 
     // New users start with clean database (no demo data)
 
@@ -53,7 +61,7 @@ export async function POST(request: NextRequest) {
         username: user.username,
         email: user.email,
         name: user.name,
-        createdAt: user.createdAt
+        createdAt: user.created_at
       }
     }, { status: 201 })
   } catch (error) {

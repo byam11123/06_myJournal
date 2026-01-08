@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 
 // GET all notes for a task
 export async function GET(request: NextRequest) {
@@ -14,10 +14,19 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const notes = await db.note.findMany({
-      where: { taskId },
-      orderBy: { createdAt: 'desc' }
-    })
+    const { data: notes, error } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Get notes error:', error)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ notes })
   } catch (error) {
@@ -42,12 +51,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const note = await db.note.create({
-      data: {
-        taskId,
-        content
-      }
-    })
+    const { data: note, error } = await supabase
+      .from('notes')
+      .insert([
+        {
+          task_id: taskId,
+          content
+        }
+      ])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Create note error:', error)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ note }, { status: 201 })
   } catch (error) {

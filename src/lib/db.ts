@@ -1,13 +1,5 @@
-import { PrismaClient } from '@prisma/client'
+// Direct Supabase client import
+import { supabase } from './supabaseConnection'
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query'],
-  })
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+// Export the Supabase client directly
+export { supabase }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 
 // GET all reminders for a user
 export async function GET(request: NextRequest) {
@@ -14,16 +14,23 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const reminders = await db.reminder.findMany({
-      where: { userId },
-      orderBy: [
-        { date: 'asc' },
-        { time: 'asc' }
-      ],
-      include: {
-        task: true
-      }
-    })
+    const { data: reminders, error } = await supabase
+      .from('reminders')
+      .select(`
+        *,
+        task:tasks!inner(*)
+      `)
+      .eq('user_id', userId)
+      .order('date', { ascending: true })
+      .order('time', { ascending: true })
+
+    if (error) {
+      console.error('Get reminders error:', error)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ reminders })
   } catch (error) {
@@ -48,17 +55,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const reminder = await db.reminder.create({
-      data: {
-        userId,
-        taskId,
-        title,
-        message,
-        date,
-        time,
-        type: type || 'browser'
-      }
-    })
+    const { data: reminder, error } = await supabase
+      .from('reminders')
+      .insert([
+        {
+          user_id: userId,
+          task_id: taskId,
+          title,
+          message,
+          date,
+          time,
+          type: type || 'browser'
+        }
+      ])
+      .select()
+      .single()
+
+    if (error) {
+      console.error('Create reminder error:', error)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ reminder }, { status: 201 })
   } catch (error) {
