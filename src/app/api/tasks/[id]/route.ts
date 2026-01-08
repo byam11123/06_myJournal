@@ -21,7 +21,10 @@ export async function PUT(
         goal_id: goalId
       })
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        goal:goals(*)
+      `)
       .single()
 
     if (error) {
@@ -32,7 +35,25 @@ export async function PUT(
       )
     }
 
-    return NextResponse.json({ task })
+    // Format the task to match frontend expectations
+    const formattedTask = {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      date: task.date,
+      time: task.time,
+      completed: task.completed,
+      goalId: task.goal_id,
+      userId: task.user_id,
+      createdAt: task.created_at,
+      updatedAt: task.updated_at,
+      goal: task.goal ? {
+        id: task.goal.id,
+        title: task.goal.title
+      } : null
+    }
+
+    return NextResponse.json({ task: formattedTask })
   } catch (error) {
     console.error('PUT task error:', error)
     return NextResponse.json(
@@ -69,7 +90,10 @@ export async function PATCH(
       .from('tasks')
       .update({ completed })
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        goal:goals(*)
+      `)
       .single()
 
     if (error) {
@@ -82,7 +106,25 @@ export async function PATCH(
 
     console.log('Updated task:', task)
 
-    return NextResponse.json({ task })
+    // Format the task to match frontend expectations
+    const formattedTask = {
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      date: task.date,
+      time: task.time,
+      completed: task.completed,
+      goalId: task.goal_id,
+      userId: task.user_id,
+      createdAt: task.created_at,
+      updatedAt: task.updated_at,
+      goal: task.goal ? {
+        id: task.goal.id,
+        title: task.goal.title
+      } : null
+    }
+
+    return NextResponse.json({ task: formattedTask })
   } catch (error) {
     console.error('PATCH task error:', error)
     return NextResponse.json(

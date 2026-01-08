@@ -469,6 +469,10 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json()
           setTasks(tasks.map(t => t.id === editingTask.id ? data.task : t))
+          // Also update the selectedTask if it's the current task
+          if (selectedTask && selectedTask.id === editingTask.id) {
+            setSelectedTask(data.task)
+          }
           addTimelineEvent('task_updated', 'Task Updated', `You updated "${taskTitle}"`)
           toast({ title: 'Task updated!' })
         }
@@ -523,6 +527,10 @@ export default function Home() {
         const data = await res.json()
         console.log('API response:', data.task)
         setTasks(tasks.map(t => t.id === taskId ? data.task : t))
+        // Also update the selectedTask if it's the current task
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask(data.task)
+        }
         const newCompletedStatus = !task.completed; // This is the new status after toggle
         addTimelineEvent(
           newCompletedStatus ? 'task_completed' : 'task_uncompleted',
@@ -559,6 +567,10 @@ export default function Home() {
 
       if (res.ok) {
         setTasks(tasks.filter(t => t.id !== taskId))
+        // Clear the selectedTask if it's the one being deleted
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask(null)
+        }
         toast({ title: 'Task deleted!' })
       }
     } catch (error) {
@@ -625,6 +637,13 @@ export default function Home() {
             ? { ...t, photos: [...(t.photos || []), data.photo] }
             : t
         ))
+        // Also update the selectedTask if it's the current task
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            photos: [...(selectedTask.photos || []), data.photo]
+          })
+        }
         toast({ title: 'Photo added!' })
       }
     } catch (error) {
@@ -648,6 +667,13 @@ export default function Home() {
             ? { ...t, photos: (t.photos || []).filter(p => p.id !== photoId) }
             : t
         ))
+        // Also update the selectedTask if it's the current task
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            photos: (selectedTask.photos || []).filter(p => p.id !== photoId)
+          })
+        }
         toast({ title: 'Photo removed!' })
       }
     } catch (error) {
@@ -680,6 +706,13 @@ export default function Home() {
             ? { ...t, learnings: [...(t.learnings || []), data.learning] }
             : t
         ))
+        // Also update the selectedTask if it's the current task
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            learnings: [...(selectedTask.learnings || []), data.learning]
+          })
+        }
         setNewLearning('')
         toast({ title: 'Learning added!' })
       }
@@ -712,6 +745,13 @@ export default function Home() {
             ? { ...t, notes: [...(t.notes || []), data.note] }
             : t
         ))
+        // Also update the selectedTask if it's the current task
+        if (selectedTask && selectedTask.id === taskId) {
+          setSelectedTask({
+            ...selectedTask,
+            notes: [...(selectedTask.notes || []), data.note]
+          })
+        }
         setNewNote('')
         toast({ title: 'Note added!' })
       }

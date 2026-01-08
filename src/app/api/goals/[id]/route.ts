@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 
 // PUT update a goal
 export async function PUT(
@@ -7,21 +7,45 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const { id } = await params; // Await params to resolve the promise
     const body = await request.json()
     const { title, description, category, status, targetDate } = body
 
-    const goal = await db.goal.update({
-      where: { id: params.id },
-      data: {
+    const { data: goal, error } = await supabase
+      .from('goals')
+      .update({
         title,
         description,
         category,
         status,
-        targetDate: targetDate ? new Date(targetDate) : null
-      }
-    })
+        target_date: targetDate ? new Date(targetDate).toISOString() : null
+      })
+      .eq('id', id)
+      .select()
+      .single()
 
-    return NextResponse.json({ goal })
+    if (error) {
+      console.error('Update goal error:', error)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
+
+    // Format the response to match the expected structure
+    const formattedGoal = {
+      id: goal.id,
+      title: goal.title,
+      description: goal.description,
+      category: goal.category,
+      status: goal.status,
+      targetDate: goal.target_date,
+      userId: goal.user_id,
+      createdAt: goal.created_at,
+      updatedAt: goal.updated_at
+    }
+
+    return NextResponse.json({ goal: formattedGoal })
   } catch (error) {
     console.error('Update goal error:', error)
     return NextResponse.json(
@@ -37,9 +61,20 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await db.goal.delete({
-      where: { id: params.id }
-    })
+    const { id } = await params; // Await params to resolve the promise
+
+    const { error } = await supabase
+      .from('goals')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Delete goal error:', error)
+      return NextResponse.json(
+        { error: 'Internal server error' },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
