@@ -8,7 +8,7 @@ export async function PUT(
 ) {
   try {
     const body = await request.json()
-    const { id } = params
+    const { id } = await params; // Await params to resolve the promise
     const { title, description, date, time, goalId } = body
 
     const { data: task, error } = await supabase
@@ -47,13 +47,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  console.log('PATCH request received for task:', params.id)
+  const { id } = await params; // Await params to resolve the promise
+  console.log('PATCH request received for task:', id)
 
   try {
     const body = await request.json()
     console.log('Request body:', body)
     const { completed } = body
-    const { id } = params
 
     if (typeof completed !== 'boolean') {
       console.error('Invalid completed value:', completed)
@@ -98,7 +98,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params
+    const { id } = await params; // Await params to resolve the promise
 
     const { error } = await supabase
       .from('tasks')

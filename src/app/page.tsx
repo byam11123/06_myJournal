@@ -523,14 +523,15 @@ export default function Home() {
         const data = await res.json()
         console.log('API response:', data.task)
         setTasks(tasks.map(t => t.id === taskId ? data.task : t))
+        const newCompletedStatus = !task.completed; // This is the new status after toggle
         addTimelineEvent(
-          task.completed ? 'task_completed' : 'task_uncompleted',
-          task.completed ? 'Task Completed' : 'Task Uncompleted',
-          `You ${task.completed ? 'completed' : 'uncompleted'} "${task.title}"`
+          newCompletedStatus ? 'task_completed' : 'task_uncompleted',
+          newCompletedStatus ? 'Task Completed' : 'Task Uncompleted',
+          `You ${newCompletedStatus ? 'completed' : 'uncompleted'} "${task.title}"`
         )
         toast({
-          title: task.completed ? 'Task completed!' : 'Task uncompleted!',
-          description: `"${task.title}" is now ${!task.completed ? 'pending' : 'done'}`,
+          title: newCompletedStatus ? 'Task completed!' : 'Task uncompleted!',
+          description: `"${task.title}" is now ${newCompletedStatus ? 'done' : 'pending'}`,
         })
       } else {
         console.error('API error:', res.status)
