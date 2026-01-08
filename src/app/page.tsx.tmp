@@ -1,0 +1,6 @@
+  // Drag and drop state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
+
+  // Task view mode within Tasks tab
+  const [taskViewMode, setTaskViewMode] = useState<'list' | 'grid'>('list')
+  const [taskSection, setTaskSection] = useState<'all' | 'today' | 'completed' | 'incomplete'>('all')
