@@ -32,7 +32,8 @@ This scaffold provides a robust foundation built with:
 
 ### 🗄️ Database & Backend
 
-- **🗄️ Prisma** - Next-generation TypeScript ORM
+- **🗄️ Supabase** - PostgreSQL database with real-time capabilities
+- **🔍 Prisma** - Next-generation TypeScript ORM (configured for PostgreSQL)
 - **🔐 NextAuth.js** - Complete open-source authentication solution
 
 ### 🎨 Advanced UI Features

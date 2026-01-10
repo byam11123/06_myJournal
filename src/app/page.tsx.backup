@@ -1,9 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useMobile } from '@/hooks/use-mobile'
-import { AuthScreen } from '@/components/auth/AuthScreen'
-import { AppProvider, useApp } from '@/context/AppContext'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -182,14 +180,14 @@ export default function Home() {
       loadUserData(user.id)
     }
 
+    // Check reminders every minute
+    const reminderInterval = setInterval(checkReminders, 60000)
+    return () => clearInterval(reminderInterval)
+
     // Request notification permission
     if ('Notification' in window) {
       Notification.requestPermission()
     }
-
-    // Check reminders every minute
-    const reminderInterval = setInterval(checkReminders, 60000)
-    return () => clearInterval(reminderInterval)
   }, [])
 
   // Active tab state for controlled tabs
@@ -1002,20 +1000,111 @@ export default function Home() {
     return filtered
   }
 
-  // Filtered tasks for display
-  const filteredTasks = getFilteredTasks()
-
-  // Main App Content - Single return with conditional rendering
+  // Main App Content
   return (
     <>
       {!isAuthenticated ? (
-        <AuthScreen 
-          onLogin={() => {}} 
-          setActiveTab={setActiveTab}
-        />
+        // Auth Screen
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10 p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="space-y-1 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
+                  <Target className="w-8 h-8 text-primary-foreground" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl font-bold">myJournal</CardTitle>
+              <CardDescription>
+                {showSignup ? 'Create your account to get started' : 'Login to continue your journey'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {showSignup && (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        placeholder="John Doe"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="john@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    placeholder={showSignup ? 'johndoe' : 'demo'}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder={showSignup ? '••••••' : 'demo123'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </div>
+                <Button
+                  className="w-full"
+                  onClick={showSignup ? handleSignup : handleLogin}
+                >
+                  {showSignup ? 'Sign Up' : 'Login'}
+                </Button>
+                <div className="text-center text-sm text-muted-foreground">
+                  {showSignup ? (
+                    <>
+                      Already have an account?{' '}
+                      <button
+                        onClick={() => setShowSignup(false)}
+                        className="text-primary hover:underline"
+                      >
+                        Login
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      Don't have an account?{' '}
+                      <button
+                        onClick={() => setShowSignup(true)}
+                        className="text-primary hover:underline"
+                      >
+                        Sign up
+                      </button>
+                    </>
+                  )}
+                </div>
+                {!showSignup && (
+                  <div className="text-center text-xs text-muted-foreground bg-muted p-3 rounded">
+                    <p className="font-medium mb-1">Demo Credentials:</p>
+                    <p>Username: <code>demo</code></p>
+                    <p>Password: <code>demo123</code></p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       ) : (
-        // Main App Content for authenticated users
-        <div className="min-h-screen bg-background flex flex-col">
+        // Main App Content
+        <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -1182,7 +1271,6 @@ export default function Home() {
                   </div>
                 </DialogContent>
               </Dialog>
-              )}
             </div>
 
             <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
@@ -1416,7 +1504,6 @@ export default function Home() {
                     </div>
                   </DialogContent>
                 </Dialog>
-                )}
               </div>
             </div>
 
@@ -2387,7 +2474,7 @@ export default function Home() {
         </div>
       </footer>
     </div>
-      )}
-    </>
+  )} {/* End of main app content conditional */}
+</> {/* End of conditional wrapper */}
   )
 }
