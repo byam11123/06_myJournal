@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { supabase } from '@/lib/supabaseConnection'
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,27 +16,57 @@ export async function GET(request: NextRequest) {
     const today = new Date().toISOString().split('T')[0]
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
 
-    // Get all data
-    const [goals, tasks, photos] = await Promise.all([
-      db.goal.findMany({
-        where: { userId },
-        include: {
-          _count: {
-            select: { tasks: true }
-          }
-        }
-      }),
-      db.task.findMany({
-        where: { userId }
-      }),
-      db.photo.findMany({
-        where: {
-          task: {
-            userId
-          }
-        }
-      })
+    // Get all data from Supabase
+    const [goalsResult, tasksResult, photosResult] = await Promise.all([
+      supabase
+        .from('goals')
+        .select(`
+          *,
+          tasks(count)
+        `)
+        .eq('user_id', userId),
+      supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', userId),
+      supabase
+        .from('photos')
+        .select(`
+          id,
+          task_id,
+          url,
+          created_at
+        `)
+        .in('task_id', (await supabase.from('tasks').select('id', { head: true }).eq('user_id', userId)).data?.map(t => t.id) || [])
     ])
+
+    if (goalsResult.error) {
+      console.error('Get goals error:', goalsResult.error)
+      return NextResponse.json(
+        { error: 'Failed to fetch goals' },
+        { status: 500 }
+      )
+    }
+
+    if (tasksResult.error) {
+      console.error('Get tasks error:', tasksResult.error)
+      return NextResponse.json(
+        { error: 'Failed to fetch tasks' },
+        { status: 500 }
+      )
+    }
+
+    if (photosResult.error) {
+      console.error('Get photos error:', photosResult.error)
+      return NextResponse.json(
+        { error: 'Failed to fetch photos' },
+        { status: 500 }
+      )
+    }
+
+    const goals = goalsResult.data
+    const tasks = tasksResult.data
+    const photos = photosResult.data
 
     // Calculate analytics
     const totalGoals = goals.length
@@ -61,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate goal progress
     const goalProgress = goals.map(goal => {
-      const goalTasks = tasks.filter(t => t.goalId === goal.id)
+      const goalTasks = tasks.filter(t => t.goal_id === goal.id)
       const completedTasks = goalTasks.filter(t => t.completed)
       const progress = goalTasks.length > 0
         ? Math.round((completedTasks.length / goalTasks.length) * 100)

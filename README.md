@@ -32,8 +32,7 @@ This scaffold provides a robust foundation built with:
 
 ### 🗄️ Database & Backend
 
-- **🗄️ Supabase** - PostgreSQL database with real-time capabilities
-- **🔍 Prisma** - Next-generation TypeScript ORM (configured for PostgreSQL)
+- **🗄️ Supabase** - PostgreSQL database with real-time capabilities & client SDK
 - **🔐 NextAuth.js** - Complete open-source authentication solution
 
 ### 🎨 Advanced UI Features
@@ -55,7 +54,7 @@ This scaffold provides a robust foundation built with:
 - **🎨 Beautiful UI** - Complete shadcn/ui component library with advanced interactions
 - **🔒 Type Safety** - Full TypeScript configuration with Zod validation
 - **📱 Responsive** - Mobile-first design principles with smooth animations
-- **🗄️ Database Ready** - Prisma ORM configured for rapid backend development
+- **🗄️ Database Ready** - Supabase configured for rapid backend development
 - **🔐 Auth Included** - NextAuth.js for secure authentication flows
 - **📊 Data Visualization** - Charts, tables, and drag-and-drop functionality
 - **🌍 i18n Ready** - Multi-language support with Next Intl
@@ -69,11 +68,8 @@ This scaffold provides a robust foundation built with:
 # Install dependencies
 bun install
 
-# Create .env file with local database configuration
-echo DATABASE_URL="file:./dev.db" > .env
-
-# Initialize the local database
-bun run db:push
+# Create .env file with Supabase configuration
+# Add your Supabase URL and anon key
 
 # Start development server
 bun run dev
@@ -90,8 +86,7 @@ echo DATABASE_URL="postgresql://[user]:[password]@[host]:[port]/[database]" > .e
 echo NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co" >> .env
 echo NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key" >> .env
 
-# Push schema to Supabase
-bun run db:push
+# Database schema is managed via Supabase Dashboard
 
 # Build for production
 bun run build
@@ -120,13 +115,9 @@ Additional dependencies added for Windows compatibility:
 - `mkdirp` - For cross-platform directory creation
 
 
-## 🗄️ Database Configuration
+## 🗄️ Database Configuration (Supabase)
 
-### Local Development (SQLite)
-For local development, the application uses SQLite which requires no additional setup. The database file is stored locally as `dev.db`.
-
-### Production (Supabase/PostgreSQL)
-For production deployment, the application is configured to work with Supabase:
+This application uses **Supabase** for database and backend services:
 
 1. **Create a Supabase Project**:
    - Go to [supabase.com](https://supabase.com) and create an account
@@ -134,14 +125,12 @@ For production deployment, the application is configured to work with Supabase:
    - Get your Project URL and anon key from the Project Settings > API
 
 2. **Configure Environment Variables**:
-   - Set `DATABASE_URL` to your Supabase PostgreSQL connection string
    - Set `NEXT_PUBLIC_SUPABASE_URL` to your Supabase project URL
    - Set `NEXT_PUBLIC_SUPABASE_ANON_KEY` to your anon key
 
-3. **Push Database Schema**:
-   - Run `bun run db:push` to apply your Prisma schema to Supabase
-
-The application uses Prisma ORM which provides database abstraction, so switching between SQLite (local) and PostgreSQL (Supabase) requires only changing the connection string.
+3. **Database Schema**:
+   - Manage your database schema directly in the Supabase Dashboard
+   - Use Supabase's Table Editor or SQL Editor for schema changes
 
 ## 🎨 Available Features & Components
 
@@ -171,7 +160,7 @@ This scaffold includes a comprehensive set of modern web development tools:
 ### 🔐 Backend Integration
 
 - **Authentication**: Ready-to-use auth flows with NextAuth.js
-- **Database**: Type-safe database operations with Prisma
+- **Database**: Real-time database operations with Supabase Client
 - **API Client**: HTTP requests with Fetch + TanStack Query
 - **State Management**: Simple and scalable with Zustand
 
