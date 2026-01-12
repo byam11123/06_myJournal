@@ -117,14 +117,7 @@ export function TasksTab({
             filtered = filtered.filter((t) => t.goalId === selectedGoalFilter);
         }
 
-        // Sort by Priority (High > Medium > Low)
-        filtered.sort((a, b) => {
-            const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
-            const pA = priorityWeight[a.priority || 'Medium'] || 2;
-            const pB = priorityWeight[b.priority || 'Medium'] || 2;
-            if (pA !== pB) return pB - pA;
-            return 0;
-        });
+
 
         return filtered;
     };
@@ -154,7 +147,7 @@ export function TasksTab({
 
             const newTasks = [...tasks];
             const [removed] = newTasks.splice(taskIndex1, 1);
-            newTasks.splice(taskIndex2, 0, removed[0]);
+            newTasks.splice(taskIndex2, 0, removed);
 
             onTasksChange(newTasks);
             setDraggedTaskId(null);
@@ -445,22 +438,31 @@ export function TasksTab({
                         return (
                             <div
                                 key={task.id}
-                                draggable={!isMobile} // Disable drag on mobile
+                                draggable={!isMobile && !task.completed} // Disable drag on mobile and for completed tasks
                                 onDragStart={
-                                    !isMobile
+                                    !isMobile && !task.completed
                                         ? (e) => {
                                             e.dataTransfer.setData("text/plain", task.id);
                                             handleDragStart(task.id);
                                         }
                                         : undefined
                                 }
-                                onDragEnd={
-                                    !isMobile ? () => handleDragEnd(task.id) : undefined
-                                }
-                                className={`transition-all ${isMobile ? "cursor-pointer" : "cursor-move"
-                                    } ${isDragging
+                                onDragOver={(e) => {
+                                    if (!isMobile && !task.completed) {
+                                        e.preventDefault(); // Allow drop
+                                    }
+                                }}
+                                onDrop={(e) => {
+                                    if (!isMobile && !task.completed) {
+                                        e.preventDefault();
+                                        handleDragEnd(task.id); // Valid drop target
+                                    }
+                                }}
+                                className={`transition-all ${isMobile ? "cursor-pointer" : ""
+                                    } ${(!isMobile && !task.completed) ? "cursor-move hover:scale-[1.02]" : "cursor-default"} 
+                                    ${isDragging
                                         ? "opacity-50 scale-95"
-                                        : "hover:scale-[1.02]"
+                                        : ""
                                     }`}
                             >
                                 <Card
@@ -469,9 +471,10 @@ export function TasksTab({
                                 >
                                     <CardContent className="p-4">
                                         <div className="flex items-start gap-3">
-                                            {/* Mobile: Larger touch targets */}
+                                            {/* Mobile or Desktop */}
                                             {isMobile ? (
                                                 <>
+                                                    {/* Mobile Content ... (unchanged logic, just context) */}
                                                     {/* Task Checkbox - Larger touch target */}
                                                     <div className="mt-1">
                                                         <Checkbox
@@ -490,6 +493,7 @@ export function TasksTab({
                                                             onSelectTask(task);
                                                         }}
                                                     >
+                                                        {/* ... content ... */}
                                                         <div className="flex items-start justify-between gap-2">
                                                             <div className="flex-1 min-w-0">
                                                                 <h4
@@ -580,9 +584,10 @@ export function TasksTab({
                                                                             key={photo.id}
                                                                             className="w-12 h-12 rounded-md relative group"
                                                                             style={{
-                                                                                backgroundColor: photo.url,
+                                                                                // backgroundColor: photo.url, // Fix: Use img tag
                                                                             }}
                                                                         >
+                                                                            <img src={photo.url} className="w-full h-full object-cover rounded-md" alt="" />
                                                                             <button
                                                                                 onClick={(e) => {
                                                                                     e.stopPropagation();
@@ -595,8 +600,6 @@ export function TasksTab({
                                                                             >
                                                                                 <X className="w-4 h-4" />
                                                                             </button>
-                                                                            {/* Mock image if URL fails (or just bg color) - in real app use img tag */}
-                                                                            <img src={photo.url} className="w-full h-full object-cover rounded-md" alt="" />
                                                                         </div>
                                                                     ))}
                                                             </div>
@@ -607,9 +610,16 @@ export function TasksTab({
                                                 // Desktop: Original layout with drag handle
                                                 <>
                                                     {/* Drag Handle */}
-                                                    <div className="cursor-grab active:cursor-grabbing mt-1">
-                                                        <GripVertical className="w-5 h-5 text-muted-foreground" />
-                                                    </div>
+                                                    {!task.completed && (
+                                                        <div className="cursor-grab active:cursor-grabbing mt-1">
+                                                            <GripVertical className="w-5 h-5 text-muted-foreground" />
+                                                        </div>
+                                                    )}
+                                                    {/* If completed, show a spacer or just nothing? 
+                                                        Nothing is fine, flex gap handles spacing. 
+                                                        But if we want alignment, maybe an invisible spacer.
+                                                        For now, let's just hide it. The checkbox will shift left.
+                                                    */}
 
                                                     {/* Task Checkbox */}
                                                     <Checkbox
