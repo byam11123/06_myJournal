@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseConnection'
 // PUT update task
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json()
@@ -70,7 +70,7 @@ export async function PUT(
 // PATCH toggle task completion
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params; // Await params to resolve the promise
   console.log('PATCH request received for task:', id)
@@ -143,7 +143,7 @@ export async function PATCH(
 // DELETE task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params; // Await params to resolve the promise

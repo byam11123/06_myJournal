@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useMobile } from "@/hooks/use-mobile";
 import { AuthScreen } from "@/components/auth/AuthScreen";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -71,6 +71,9 @@ import {
 } from "lucide-react";
 
 // Types are now imported from @/types
+import { DescriptionEditor } from "@/components/ui/description-editor";
+import { MarkdownDisplay } from "@/components/ui/markdown-display";
+import { supabase } from "@/lib/supabaseConnection";
 
 export default function Home() {
   // Auth state
@@ -95,6 +98,9 @@ export default function Home() {
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showReminderDialog, setShowReminderDialog] = useState(false);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoTaskId, setPhotoTaskId] = useState<string | null>(null);
+  const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null); // For lightbox
   const [showProfile, setShowProfile] = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
 
@@ -423,8 +429,9 @@ export default function Home() {
     setEditingTask(null);
     setTaskTitle("");
     setTaskDescription("");
-    setTaskDate("");
-    setTaskTime("");
+    const now = new Date();
+    setTaskDate(now.toISOString().split('T')[0]);
+    setTaskTime(now.toTimeString().slice(0, 5));
     setTaskGoalId("");
     setTaskPriority('Medium');
     setTaskChecklist([]);
@@ -668,51 +675,65 @@ export default function Home() {
   };
 
   // Photo functions
-  const handleAddPhoto = async (taskId: string) => {
-    const colors = [
-      "#4ade80",
-      "#f472b6",
-      "#60a5fa",
-      "#fbbf24",
-      "#a78bfa",
-      "#34d399",
-    ];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+  const handleAddPhoto = (taskId: string) => {
+    setPhotoTaskId(taskId);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !photoTaskId) return;
 
     try {
+      const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '')}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(`${currentUser?.id}/${filename}`, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from('photos')
+        .getPublicUrl(`${currentUser?.id}/${filename}`);
+
+      const publicUrl = publicUrlData.publicUrl;
+
+      // Save to DB
       const res = await fetch("/api/photos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          taskId,
-          url: randomColor,
+          taskId: photoTaskId,
+          url: publicUrl,
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        setTasks(
-          tasks.map((t) =>
-            t.id === taskId
-              ? { ...t, photos: [...(t.photos || []), data.photo] }
-              : t
-          )
-        );
-        // Also update the selectedTask if it's the current task
-        if (selectedTask && selectedTask.id === taskId) {
-          setSelectedTask({
-            ...selectedTask,
-            photos: [...(selectedTask.photos || []), data.photo],
-          });
+        // Update State
+        const updateTaskPhotos = (task: Task) => ({
+          ...task,
+          photos: [...(task.photos || []), data.photo]
+        });
+
+        setTasks(prev => prev.map(t => t.id === photoTaskId ? updateTaskPhotos(t) : t));
+        if (selectedTask && selectedTask.id === photoTaskId) {
+          setSelectedTask(prev => prev ? updateTaskPhotos(prev) : null);
         }
+
         toast({ title: "Photo added!" });
       }
     } catch (error) {
+      console.error(error);
       toast({
         title: "Error",
-        description: "Failed to add photo",
+        description: "Failed to upload photo. Ensure 'photos' bucket exists.",
         variant: "destructive",
       });
+    } finally {
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setPhotoTaskId(null);
     }
   };
 
@@ -1231,8 +1252,8 @@ export default function Home() {
                           Link a task to one of your goals
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
+                      <div className="space-y-3 py-2">
+                        <div className="space-y-1">
                           <Label htmlFor="task-title">Title *</Label>
                           <Input
                             id="task-title"
@@ -1241,64 +1262,26 @@ export default function Home() {
                             onChange={(e) => setTaskTitle(e.target.value)}
                           />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                           <Label htmlFor="task-description">
                             Description
                           </Label>
-                          <Textarea
-                            id="task-description"
-                            placeholder="Describe your task..."
+                          <DescriptionEditor
                             value={taskDescription}
-                            onChange={(e) =>
-                              setTaskDescription(e.target.value)
-                            }
+                            onChange={setTaskDescription}
+                            placeholder="Describe your task... Use - for lists, **text** for bold."
                           />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label htmlFor="task-date">Date *</Label>
-                            <Input
-                              id="task-date"
-                              type="date"
-                              value={taskDate}
-                              onChange={(e) => setTaskDate(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="task-time">Time</Label>
-                            <Input
-                              id="task-time"
-                              type="time"
-                              value={taskTime}
-                              onChange={(e) => setTaskTime(e.target.value)}
-                            />
-                          </div>
-                        </div>
 
-                        {/* Priority Selection */}
-                        <div className="space-y-2">
-                          <Label>Priority</Label>
-                          <Select value={taskPriority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setTaskPriority(v)}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Low">Low</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="High">High</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Checklist Section */}
-                        <div className="space-y-2">
+                        {/* Checklist Section - Moved Here */}
+                        <div className="space-y-1">
                           <div className="flex justify-between items-center">
                             <Label>Checklist</Label>
-                            <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem}>
+                            <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem} className="h-7 px-2 text-xs">
                               <Plus className="w-3 h-3 mr-1" /> Add Item
                             </Button>
                           </div>
-                          <div className="space-y-2">
+                          <div className="space-y-1">
                             {taskChecklist.map((item, index) => (
                               <div key={item.id} className="flex items-center gap-2">
                                 <Checkbox
@@ -1327,7 +1310,44 @@ export default function Home() {
                             )}
                           </div>
                         </div>
-                        <div className="space-y-2">
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="task-date">Date *</Label>
+                            <Input
+                              id="task-date"
+                              type="date"
+                              value={taskDate}
+                              onChange={(e) => setTaskDate(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="task-time">Time</Label>
+                            <Input
+                              id="task-time"
+                              type="time"
+                              value={taskTime}
+                              onChange={(e) => setTaskTime(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Priority Selection */}
+                        <div className="space-y-1">
+                          <Label>Priority</Label>
+                          <Select value={taskPriority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setTaskPriority(v)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Low">Low</SelectItem>
+                              <SelectItem value="Medium">Medium</SelectItem>
+                              <SelectItem value="High">High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1">
                           <Label htmlFor="task-goal">Goal *</Label>
                           <Select
                             value={taskGoalId}
@@ -1875,9 +1895,7 @@ export default function Home() {
                     {selectedTask.description && (
                       <div>
                         <h4 className="font-medium mb-2">Description</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {selectedTask.description}
-                        </p>
+                        <MarkdownDisplay content={selectedTask.description} />
                       </div>
                     )}
 
@@ -1939,17 +1957,21 @@ export default function Home() {
                         <div className="grid grid-cols-4 gap-2">
                           {selectedTask.photos.map((photo) => (
                             <div key={photo.id} className="relative group">
-                              <div
-                                className="w-full aspect-square rounded-lg"
-                                style={{ backgroundColor: photo.url }}
+                              <img
+                                src={photo.url}
+                                alt="Progress photo"
+                                className="w-full aspect-square rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => setViewingImageUrl(photo.url)}
                               />
                               <button
-                                onClick={() =>
-                                  handleRemovePhoto(selectedTask.id, photo.id)
-                                }
-                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemovePhoto(selectedTask.id, photo.id);
+                                }}
+                                className="absolute top-1 right-1 bg-black/50 hover:bg-red-500/80 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
+                                title="Remove photo"
                               >
-                                <X className="w-5 h-5 text-white" />
+                                <X className="w-3 h-3 text-white" />
                               </button>
                             </div>
                           ))}
@@ -2150,6 +2172,34 @@ export default function Home() {
           )}
         </AppLayout>
       )}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileSelect}
+        className="hidden"
+        accept="image/*"
+      />
+
+      <Dialog open={!!viewingImageUrl} onOpenChange={(open) => !open && setViewingImageUrl(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/90 border-none shadow-2xl">
+          <DialogTitle className="sr-only">Photo Viewer</DialogTitle>
+          <div className="relative flex items-center justify-center min-h-[50vh] max-h-[90vh] w-full">
+            {viewingImageUrl && (
+              <img
+                src={viewingImageUrl}
+                alt="Full view"
+                className="max-w-full max-h-[90vh] object-contain"
+              />
+            )}
+            <button
+              onClick={() => setViewingImageUrl(null)}
+              className="absolute top-4 right-4 bg-black/50 p-2 rounded-full text-white hover:bg-black/80 transition-colors cursor-pointer z-50"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
