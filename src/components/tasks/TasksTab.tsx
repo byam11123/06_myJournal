@@ -56,7 +56,7 @@ interface TasksTabProps {
     onToggleTask: (taskId: string) => void;
     onDeleteTask: (taskId: string) => void;
     onAddTimelineEvent: (type: string, title: string, description: string) => void;
-    onShowTaskDialog: () => void;
+    onShowTaskDialog: (goalId?: string) => void;
     onRemovePhoto: (taskId: string, photoId: string) => void;
     selectedGoalFilter: string | null;
     onSetSelectedGoalFilter: (goalId: string | null) => void;
@@ -305,10 +305,8 @@ export function TasksTab({
 
                     <Button
                         onClick={() => {
-                            // We need to reset the form in parent, but here we just trigger the dialog open
-                            // The parent should handle the reset logic when the dialog opens or via this callback if needed
-                            // For now, we assume the parent passed a handler that might prep the form
-                            onShowTaskDialog();
+                            // Pass the selected goal filter if active, so the parent can pre-fill the form
+                            onShowTaskDialog(selectedGoalFilter || undefined);
                         }}
                     >
                         <Plus className="w-4 h-4 mr-2" />
@@ -429,7 +427,7 @@ export function TasksTab({
                                 : "Start by creating your first task"}
                         </p>
                         {isMobile ? null : (
-                            <Button onClick={onShowTaskDialog}>
+                            <Button onClick={() => onShowTaskDialog(selectedGoalFilter || undefined)}>
                                 <Plus className="w-4 h-4 mr-2" />
                                 {selectedGoalFilter
                                     ? "Add Task to This Goal"

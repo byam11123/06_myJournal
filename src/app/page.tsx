@@ -1044,9 +1044,14 @@ export default function Home() {
                 onToggleTask={handleToggleTask}
                 onDeleteTask={handleDeleteTask}
                 onAddTimelineEvent={addTimelineEvent}
-                onShowTaskDialog={() => {
+                onShowTaskDialog={(goalId) => {
                   setEditingTask(null);
                   resetTaskForm();
+                  if (goalId) {
+                    setTaskGoalId(goalId);
+                  } else if (goals.length > 0) {
+                    setTaskGoalId(goals[0].id);
+                  }
                   setShowTaskDialog(true);
                 }}
                 onRemovePhoto={handleRemovePhoto}
@@ -1178,6 +1183,11 @@ export default function Home() {
                   onClick={() => {
                     setEditingTask(null);
                     resetTaskForm();
+                    if (selectedGoalFilter) {
+                      setTaskGoalId(selectedGoalFilter);
+                    } else if (goals.length > 0) {
+                      setTaskGoalId(goals[0].id);
+                    }
                     setShowTaskDialog(true);
                   }}
                 >
