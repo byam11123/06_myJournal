@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Target, CheckCircle2, BarChart3, History, User as UserIcon } from 'lucide-react'
+import { Target, CheckCircle2, BarChart3, History, Bell, User as UserIcon } from 'lucide-react'
 import { User as UserType } from '@/types'
 
 interface AppLayoutProps {
@@ -22,9 +22,9 @@ export function AppLayout({
   children
 }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col relative">
       {/* Header */}
-      <header className="border-b bg-card">
+      <header className="border-b bg-card sticky top-0 z-40">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           {isMobile ? (
             // Mobile: Compact header
@@ -57,41 +57,9 @@ export function AppLayout({
       </header>
 
       {/* Main Content */}
-      <main className={`container mx-auto px-4 py-6 ${isMobile ? 'pb-24' : ''}`}>
+      <main className={`flex-1 container mx-auto px-4 py-6 ${isMobile ? 'pb-20' : ''}`}>
         <div className="space-y-6">
-          {isMobile ? (
-            // Mobile: Bottom Navigation Bar
-            <div className="fixed bottom-0 left-0 right-0 bg-card border-t z-50 flex justify-around py-2 md:hidden pb-safe">
-              <button
-                className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'goals' ? 'text-primary' : 'text-muted-foreground'}`}
-                onClick={() => onSetActiveTab('goals')}
-              >
-                <Target className="w-5 h-5" />
-                <span className="text-xs mt-1">Goals</span>
-              </button>
-              <button
-                className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'tasks' ? 'text-primary' : 'text-muted-foreground'}`}
-                onClick={() => onSetActiveTab('tasks')}
-              >
-                <CheckCircle2 className="w-5 h-5" />
-                <span className="text-xs mt-1">Tasks</span>
-              </button>
-              <button
-                className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'analytics' ? 'text-primary' : 'text-muted-foreground'}`}
-                onClick={() => onSetActiveTab('analytics')}
-              >
-                <BarChart3 className="w-5 h-5" />
-                <span className="text-xs mt-1">Stats</span>
-              </button>
-              <button
-                className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'timeline' ? 'text-primary' : 'text-muted-foreground'}`}
-                onClick={() => onSetActiveTab('timeline')}
-              >
-                <History className="w-5 h-5" />
-                <span className="text-xs mt-1">Timeline</span>
-              </button>
-            </div>
-          ) : (
+          {!isMobile && (
             // Desktop: Horizontal Tabs
             <div className="w-full overflow-x-auto">
               <div className="inline-flex w-max min-w-full sm:min-w-0">
@@ -141,12 +109,57 @@ export function AppLayout({
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="mt-auto border-t py-4 bg-card">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© 2025 myJournal. Built with Next.js and shadcn/ui.</p>
-        </div>
-      </footer>
+      {/* Footer - Hidden on mobile */}
+      {!isMobile && (
+        <footer className="mt-auto border-t py-4 bg-card">
+          <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
+            <p>© 2025 myJournal. Built with Next.js and shadcn/ui.</p>
+          </div>
+        </footer>
+      )}
+
+      {/* Mobile Bottom Navigation - Outside main content flow */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t z-[100] safe-area-bottom">
+          <div className="flex justify-around items-center py-2 px-2">
+            <button
+              className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-lg transition-colors ${activeTab === 'goals' ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+              onClick={() => onSetActiveTab('goals')}
+            >
+              <Target className="w-5 h-5" />
+              <span className="text-[10px] mt-1 font-medium">Goals</span>
+            </button>
+            <button
+              className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-lg transition-colors ${activeTab === 'tasks' ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+              onClick={() => onSetActiveTab('tasks')}
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              <span className="text-[10px] mt-1 font-medium">Tasks</span>
+            </button>
+            <button
+              className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-lg transition-colors ${activeTab === 'analytics' ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+              onClick={() => onSetActiveTab('analytics')}
+            >
+              <BarChart3 className="w-5 h-5" />
+              <span className="text-[10px] mt-1 font-medium">Stats</span>
+            </button>
+            <button
+              className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-lg transition-colors ${activeTab === 'timeline' ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+              onClick={() => onSetActiveTab('timeline')}
+            >
+              <History className="w-5 h-5" />
+              <span className="text-[10px] mt-1 font-medium">Timeline</span>
+            </button>
+            <button
+              className={`flex flex-col items-center justify-center flex-1 py-2 px-1 rounded-lg transition-colors ${activeTab === 'reminders' ? 'text-primary bg-primary/10' : 'text-muted-foreground'}`}
+              onClick={() => onSetActiveTab('reminders')}
+            >
+              <Bell className="w-5 h-5" />
+              <span className="text-[10px] mt-1 font-medium">Remind</span>
+            </button>
+          </div>
+        </nav>
+      )}
     </div>
   )
 }

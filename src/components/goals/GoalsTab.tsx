@@ -24,6 +24,8 @@ interface GoalsTabProps {
   onAddTimelineEvent: (type: string, title: string, description: string) => void
   onSetSelectedGoalFilter: (goalId: string) => void
   onSetActiveTab: (tab: string) => void
+  showGoalDialog: boolean
+  setShowGoalDialog: (open: boolean) => void
 }
 
 export function GoalsTab({
@@ -34,9 +36,10 @@ export function GoalsTab({
   onGoalsChange,
   onAddTimelineEvent,
   onSetSelectedGoalFilter,
-  onSetActiveTab
+  onSetActiveTab,
+  showGoalDialog,
+  setShowGoalDialog
 }: GoalsTabProps) {
-  const [showGoalDialog, setShowGoalDialog] = useState(false)
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
   const [goalTitle, setGoalTitle] = useState('')
   const [goalDescription, setGoalDescription] = useState('')
@@ -161,86 +164,86 @@ export function GoalsTab({
           <h2 className="text-2xl font-bold">Your Goals</h2>
           <p className="text-muted-foreground">Track your long-term objectives</p>
         </div>
-        {!isMobile && (
-          <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
+        <Dialog open={showGoalDialog} onOpenChange={setShowGoalDialog}>
+          {!isMobile && (
             <DialogTrigger asChild>
               <Button onClick={() => { setEditingGoal(null); resetGoalForm(); }}>
                 <Plus className="w-4 h-4 mr-2" />
                 Add Goal
               </Button>
             </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingGoal ? 'Edit Goal' : 'Create New Goal'}</DialogTitle>
-                <DialogDescription>Set your target and track your progress</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
+          )}
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingGoal ? 'Edit Goal' : 'Create New Goal'}</DialogTitle>
+              <DialogDescription>Set your target and track your progress</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="goal-title">Title *</Label>
+                <Input
+                  id="goal-title"
+                  placeholder="e.g., Learn JavaScript"
+                  value={goalTitle}
+                  onChange={(e) => setGoalTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="goal-description">Description</Label>
+                <Textarea
+                  id="goal-description"
+                  placeholder="Describe your goal..."
+                  value={goalDescription}
+                  onChange={(e) => setGoalDescription(e.target.value)}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="goal-title">Title *</Label>
-                  <Input
-                    id="goal-title"
-                    placeholder="e.g., Learn JavaScript"
-                    value={goalTitle}
-                    onChange={(e) => setGoalTitle(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="goal-description">Description</Label>
-                  <Textarea
-                    id="goal-description"
-                    placeholder="Describe your goal..."
-                    value={goalDescription}
-                    onChange={(e) => setGoalDescription(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="goal-category">Category *</Label>
-                    <Select value={goalCategory} onValueChange={setGoalCategory}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Health">Health</SelectItem>
-                        <SelectItem value="Learning">Learning</SelectItem>
-                        <SelectItem value="Career">Career</SelectItem>
-                        <SelectItem value="Personal">Personal</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="goal-status">Status</Label>
-                    <Select value={goalStatus} onValueChange={setGoalStatus}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Planning">Planning</SelectItem>
-                        <SelectItem value="Paused">Paused</SelectItem>
-                        <SelectItem value="Completed">Completed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  <Label htmlFor="goal-category">Category *</Label>
+                  <Select value={goalCategory} onValueChange={setGoalCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Health">Health</SelectItem>
+                      <SelectItem value="Learning">Learning</SelectItem>
+                      <SelectItem value="Career">Career</SelectItem>
+                      <SelectItem value="Personal">Personal</SelectItem>
+                      <SelectItem value="Finance">Finance</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="goal-target-date">Target Date</Label>
-                  <Input
-                    id="goal-target-date"
-                    type="date"
-                    value={goalTargetDate}
-                    onChange={(e) => setGoalTargetDate(e.target.value)}
-                  />
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={resetGoalForm}>Cancel</Button>
-                  <Button onClick={handleSaveGoal}>{editingGoal ? 'Update' : 'Create'} Goal</Button>
+                  <Label htmlFor="goal-status">Status</Label>
+                  <Select value={goalStatus} onValueChange={setGoalStatus}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Active">Active</SelectItem>
+                      <SelectItem value="Planning">Planning</SelectItem>
+                      <SelectItem value="Paused">Paused</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+              <div className="space-y-2">
+                <Label htmlFor="goal-target-date">Target Date</Label>
+                <Input
+                  id="goal-target-date"
+                  type="date"
+                  value={goalTargetDate}
+                  onChange={(e) => setGoalTargetDate(e.target.value)}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={resetGoalForm}>Cancel</Button>
+                <Button onClick={handleSaveGoal}>{editingGoal ? 'Update' : 'Create'} Goal</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">

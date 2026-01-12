@@ -530,15 +530,13 @@ export default function Home() {
         addTimelineEvent(
           newCompletedStatus ? "task_completed" : "task_uncompleted",
           newCompletedStatus ? "Task Completed" : "Task Uncompleted",
-          `You ${newCompletedStatus ? "completed" : "uncompleted"} "${
-            task.title
+          `You ${newCompletedStatus ? "completed" : "uncompleted"} "${task.title
           }"`
         );
         toast({
           title: newCompletedStatus ? "Task completed!" : "Task uncompleted!",
-          description: `"${task.title}" is now ${
-            newCompletedStatus ? "done" : "pending"
-          }`,
+          description: `"${task.title}" is now ${newCompletedStatus ? "done" : "pending"
+            }`,
         });
       } else {
         console.error("API error:", res.status);
@@ -674,9 +672,9 @@ export default function Home() {
           tasks.map((t) =>
             t.id === taskId
               ? {
-                  ...t,
-                  photos: (t.photos || []).filter((p) => p.id !== photoId),
-                }
+                ...t,
+                photos: (t.photos || []).filter((p) => p.id !== photoId),
+              }
               : t
           )
         );
@@ -1053,7 +1051,7 @@ export default function Home() {
   return (
     <>
       {!isAuthenticated ? (
-        <AuthScreen onLogin={() => {}} setActiveTab={setActiveTab} />
+        <AuthScreen onLogin={() => { }} setActiveTab={setActiveTab} />
       ) : (
         <AppLayout
           currentUser={currentUser}
@@ -1070,6 +1068,8 @@ export default function Home() {
               currentUser={currentUser}
               isMobile={isMobile}
               onGoalsChange={setGoals}
+              showGoalDialog={showGoalDialog}
+              setShowGoalDialog={setShowGoalDialog}
               onAddTimelineEvent={addTimelineEvent}
               onSetSelectedGoalFilter={setSelectedGoalFilter}
               onSetActiveTab={setActiveTab}
@@ -1085,20 +1085,7 @@ export default function Home() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  {isMobile ? null : (
-                    <Dialog
-                      open={showBulkImport}
-                      onOpenChange={setShowBulkImport}
-                    >
-                      <DialogTrigger asChild>
-                        <Button variant="outline">
-                          <Upload className="w-4 h-4 mr-2" />
-                          Bulk Import
-                        </Button>
-                      </DialogTrigger>
-                    </Dialog>
-                  )}
-                  {isMobile ? null : (
+                  {!isMobile && (
                     <Dialog
                       open={showBulkImport}
                       onOpenChange={setShowBulkImport}
@@ -1153,11 +1140,11 @@ export default function Home() {
                     </Dialog>
                   )}
 
-                  {isMobile ? null : (
-                    <Dialog
-                      open={showTaskDialog}
-                      onOpenChange={setShowTaskDialog}
-                    >
+                  <Dialog
+                    open={showTaskDialog}
+                    onOpenChange={setShowTaskDialog}
+                  >
+                    {!isMobile && (
                       <DialogTrigger asChild>
                         <Button
                           onClick={() => {
@@ -1169,96 +1156,95 @@ export default function Home() {
                           Add Task
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>
-                            {editingTask ? "Edit Task" : "Create New Task"}
-                          </DialogTitle>
-                          <DialogDescription>
-                            Link a task to one of your goals
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
+                    )}
+                    <DialogContent className="max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingTask ? "Edit Task" : "Create New Task"}
+                        </DialogTitle>
+                        <DialogDescription>
+                          Link a task to one of your goals
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="task-title">Title *</Label>
+                          <Input
+                            id="task-title"
+                            placeholder="e.g., Complete tutorial chapter"
+                            value={taskTitle}
+                            onChange={(e) => setTaskTitle(e.target.value)}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="task-description">
+                            Description
+                          </Label>
+                          <Textarea
+                            id="task-description"
+                            placeholder="Describe your task..."
+                            value={taskDescription}
+                            onChange={(e) =>
+                              setTaskDescription(e.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="task-title">Title *</Label>
+                            <Label htmlFor="task-date">Date *</Label>
                             <Input
-                              id="task-title"
-                              placeholder="e.g., Complete tutorial chapter"
-                              value={taskTitle}
-                              onChange={(e) => setTaskTitle(e.target.value)}
+                              id="task-date"
+                              type="date"
+                              value={taskDate}
+                              onChange={(e) => setTaskDate(e.target.value)}
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="task-description">
-                              Description
-                            </Label>
-                            <Textarea
-                              id="task-description"
-                              placeholder="Describe your task..."
-                              value={taskDescription}
-                              onChange={(e) =>
-                                setTaskDescription(e.target.value)
-                              }
+                            <Label htmlFor="task-time">Time</Label>
+                            <Input
+                              id="task-time"
+                              type="time"
+                              value={taskTime}
+                              onChange={(e) => setTaskTime(e.target.value)}
                             />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="task-date">Date *</Label>
-                              <Input
-                                id="task-date"
-                                type="date"
-                                value={taskDate}
-                                onChange={(e) => setTaskDate(e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="task-time">Time</Label>
-                              <Input
-                                id="task-time"
-                                type="time"
-                                value={taskTime}
-                                onChange={(e) => setTaskTime(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label htmlFor="task-goal">Goal *</Label>
-                            <Select
-                              value={taskGoalId}
-                              onValueChange={setTaskGoalId}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select goal" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {goals.map((goal) => (
-                                  <SelectItem key={goal.id} value={goal.id}>
-                                    {goal.title}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={resetTaskForm}>
-                              Cancel
-                            </Button>
-                            <Button onClick={handleSaveTask}>
-                              {editingTask ? "Update" : "Create"} Task
-                            </Button>
                           </div>
                         </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
+                        <div className="space-y-2">
+                          <Label htmlFor="task-goal">Goal *</Label>
+                          <Select
+                            value={taskGoalId}
+                            onValueChange={setTaskGoalId}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select goal" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {goals.map((goal) => (
+                                <SelectItem key={goal.id} value={goal.id}>
+                                  {goal.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button variant="outline" onClick={resetTaskForm}>
+                            Cancel
+                          </Button>
+                          <Button onClick={handleSaveTask}>
+                            {editingTask ? "Update" : "Create"} Task
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
 
               {/* Task Filters - New Tabs within Tasks */}
               <div
-                className={`flex gap-2 mb-4 border-b pb-4 ${
-                  isMobile ? "overflow-x-auto" : ""
-                }`}
+                className={`flex gap-2 mb-4 border-b pb-4 ${isMobile ? "overflow-x-auto" : ""
+                  }`}
               >
                 <Button
                   variant={taskSection === "all" ? "default" : "ghost"}
@@ -1296,9 +1282,8 @@ export default function Home() {
                   Completed
                 </Button>
                 <div
-                  className={`flex items-center gap-2 ${
-                    isMobile ? "ml-2" : "ml-4"
-                  }`}
+                  className={`flex items-center gap-2 ${isMobile ? "ml-2" : "ml-4"
+                    }`}
                 >
                   <Button
                     variant="outline"
@@ -1390,26 +1375,23 @@ export default function Home() {
                         onDragStart={
                           !isMobile
                             ? (e) => {
-                                e.dataTransfer.setData("text/plain", task.id);
-                                handleDragStart(task.id);
-                              }
+                              e.dataTransfer.setData("text/plain", task.id);
+                              handleDragStart(task.id);
+                            }
                             : undefined
                         }
                         onDragEnd={
                           !isMobile ? () => handleDragEnd(task.id) : undefined
                         }
-                        className={`transition-all ${
-                          isMobile ? "cursor-pointer" : "cursor-move"
-                        } ${
-                          isDragging
+                        className={`transition-all ${isMobile ? "cursor-pointer" : "cursor-move"
+                          } ${isDragging
                             ? "opacity-50 scale-95"
                             : "hover:scale-[1.02]"
-                        }`}
+                          }`}
                       >
                         <Card
-                          className={`hover:shadow-md transition-all ${
-                            task.completed ? "opacity-60" : ""
-                          }`}
+                          className={`hover:shadow-md transition-all ${task.completed ? "opacity-60" : ""
+                            }`}
                         >
                           <CardContent className="p-4">
                             <div className="flex items-start gap-3">
@@ -1438,11 +1420,10 @@ export default function Home() {
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex-1 min-w-0">
                                         <h4
-                                          className={`font-medium ${
-                                            task.completed
-                                              ? "line-through text-muted-foreground"
-                                              : ""
-                                          }`}
+                                          className={`font-medium ${task.completed
+                                            ? "line-through text-muted-foreground"
+                                            : ""
+                                            }`}
                                         >
                                           {task.title}
                                         </h4>
@@ -1569,11 +1550,10 @@ export default function Home() {
                                     <div className="flex items-start justify-between gap-2">
                                       <div>
                                         <h4
-                                          className={`font-medium ${
-                                            task.completed
-                                              ? "line-through text-muted-foreground"
-                                              : ""
-                                          }`}
+                                          className={`font-medium ${task.completed
+                                            ? "line-through text-muted-foreground"
+                                            : ""
+                                            }`}
                                         >
                                           {task.title}
                                         </h4>
@@ -1823,7 +1803,7 @@ export default function Home() {
                         </h4>
                       </div>
                       {selectedTask.learnings &&
-                      selectedTask.learnings.length > 0 ? (
+                        selectedTask.learnings.length > 0 ? (
                         <div className="space-y-2">
                           {selectedTask.learnings.map((learning) => (
                             <div
@@ -1972,7 +1952,7 @@ export default function Home() {
 
           {/* Floating Action Button for Mobile */}
           {isMobile && (
-            <div className="fixed right-4 z-50 bottom-[calc(4rem+env(safe-area-inset-bottom))]">
+            <div className="fixed right-4 z-50 bottom-[calc(6rem+env(safe-area-inset-bottom))]">
               {activeTab === "goals" && (
                 <Button
                   size="lg"
