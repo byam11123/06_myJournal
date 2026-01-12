@@ -36,11 +36,11 @@ export async function GET(request: NextRequest) {
         .select('*', { count: 'exact', head: true })
         .eq('goal_id', goal.id)
 
+      let taskCount = 0
       if (taskCountError) {
         console.error('Get task count error:', taskCountError)
-        var taskCount = 0
       } else {
-        var taskCount = count || 0
+        taskCount = count || 0
       }
 
       return {

@@ -1,0 +1,11 @@
+$ next lint
+
+./src/app/api/goals/route.ts
+41:9  Error: Unexpected var, use let or const instead.  no-var
+43:9  Error: Unexpected var, use let or const instead.  no-var
+
+./src/hooks/use-toast.ts
+21:1  Warning: Unused eslint-disable directive (no problems were reported from '@typescript-eslint/no-unused-vars').
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+error: script "lint" exited with code 1

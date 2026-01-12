@@ -74,6 +74,12 @@ import {
 import { DescriptionEditor } from "@/components/ui/description-editor";
 import { MarkdownDisplay } from "@/components/ui/markdown-display";
 import { supabase } from "@/lib/supabaseConnection";
+import { TaskDialog } from "@/components/dialogs/TaskDialog";
+import { TaskDetailDialog } from "@/components/dialogs/TaskDetailDialog";
+
+import { ProfileDialog } from "@/components/dialogs/ProfileDialog";
+import { PhotoViewer } from "@/components/dialogs/PhotoViewer";
+import { TasksTab } from "@/components/tasks/TasksTab";
 
 export default function Home() {
   // Auth state
@@ -102,7 +108,8 @@ export default function Home() {
   const [photoTaskId, setPhotoTaskId] = useState<string | null>(null);
   const [viewingImageUrl, setViewingImageUrl] = useState<string | null>(null); // For lightbox
   const [showProfile, setShowProfile] = useState(false);
-  const [showBulkImport, setShowBulkImport] = useState(false);
+  const [selectedGoalFilter, setSelectedGoalFilter] = useState<string | null>(null);
+
 
   // Form states
   const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
@@ -136,21 +143,7 @@ export default function Home() {
   const [newLearning, setNewLearning] = useState("");
   const [newNote, setNewNote] = useState("");
 
-  // Bulk import
-  const [importData, setImportData] = useState("");
-  const [importFormat, setImportFormat] = useState("json");
 
-  // Drag and drop state
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
-
-  // Task view mode within Tasks tab
-  const [taskViewMode, setTaskViewMode] = useState<"list" | "grid">("list");
-  const [taskSection, setTaskSection] = useState<
-    "all" | "today" | "completed" | "incomplete"
-  >("all");
-  const [selectedGoalFilter, setSelectedGoalFilter] = useState<string | null>(
-    null
-  );
 
   // Initialize data
   useEffect(() => {
@@ -641,38 +634,7 @@ export default function Home() {
     }
   };
 
-  // Drag and drop functions
-  const handleDragStart = (taskId: string) => {
-    setDraggedTaskId(taskId);
-  };
 
-  const handleDragEnd = async (taskId: string) => {
-    if (!draggedTaskId || draggedTaskId === taskId) {
-      setDraggedTaskId(null);
-      return;
-    }
-
-    try {
-      // Swap tasks in array
-      const taskIndex1 = tasks.findIndex((t) => t.id === draggedTaskId);
-      const taskIndex2 = tasks.findIndex((t) => t.id === taskId);
-
-      if (taskIndex1 === -1 || taskIndex2 === -1) {
-        setDraggedTaskId(null);
-        return;
-      }
-
-      const newTasks = [...tasks];
-      const [removed] = newTasks.splice(taskIndex1, 1);
-      newTasks.splice(taskIndex2, 0, removed[0]);
-
-      setTasks(newTasks);
-      setDraggedTaskId(null);
-    } catch (error) {
-      console.error("Failed to reorder tasks:", error);
-      setDraggedTaskId(null);
-    }
-  };
 
   // Photo functions
   const handleAddPhoto = (taskId: string) => {
@@ -979,66 +941,7 @@ export default function Home() {
   };
 
   // Bulk import functions
-  const handleBulkImport = () => {
-    try {
-      let importedTasks: any[] = [];
 
-      if (importFormat === "json") {
-        importedTasks = JSON.parse(importData);
-      } else if (importFormat === "csv") {
-        const lines = importData.split("\n");
-        const headers = lines[0].split(",").map((h) => h.trim());
-        importedTasks = lines
-          .slice(1)
-          .map((line) => {
-            const values = line.split(",").map((v) => v.trim());
-            const task: any = {};
-            headers.forEach((header, index) => {
-              task[header] = values[index];
-            });
-            return task;
-          })
-          .filter((task) => task.title && task.date);
-      }
-
-      const newTasks = importedTasks.map((item: any) => {
-        const goal = goals.find((g) =>
-          g.title.toLowerCase().includes(item.goalTitle?.toLowerCase() || "")
-        );
-        return {
-          id: `task-${Date.now()}-${Math.random()}`,
-          title: item.title,
-          description: item.description || null,
-          date: item.date,
-          time: item.time || null,
-          completed: false,
-          goalId: goal?.id || goals[0]?.id || "",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-      });
-
-      setTasks([...tasks, ...newTasks]);
-      addTimelineEvent(
-        "bulk_import",
-        "Bulk Import",
-        `You imported ${newTasks.length} tasks`
-      );
-      toast({
-        title: "Import successful!",
-        description: `${newTasks.length} tasks imported`,
-      });
-
-      setImportData("");
-      setShowBulkImport(false);
-    } catch (error) {
-      toast({
-        title: "Import failed",
-        description: "Please check your data format",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Analytics calculations
   const getAnalytics = () => {
@@ -1092,46 +995,10 @@ export default function Home() {
   };
 
   // Get filtered tasks based on section and goal filter
-  const getFilteredTasks = () => {
-    const today = new Date().toISOString().split("T")[0];
 
-    // First apply section filter (all/today/completed/incomplete)
-    let filtered = tasks;
-    switch (taskSection) {
-      case "today":
-        filtered = tasks.filter((t) => t.date === today);
-        break;
-      case "completed":
-        filtered = tasks.filter((t) => t.completed);
-        break;
-      case "incomplete":
-        filtered = tasks.filter((t) => !t.completed);
-        break;
-      case "all":
-      default:
-        break;
-    }
-
-    // Then apply goal filter if active
-    if (selectedGoalFilter) {
-      filtered = filtered.filter((t) => t.goalId === selectedGoalFilter);
-    }
-
-    // Sort by Priority (High > Medium > Low)
-    filtered.sort((a, b) => {
-      const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
-      const pA = priorityWeight[a.priority || 'Medium'] || 2;
-      const pB = priorityWeight[b.priority || 'Medium'] || 2;
-      if (pA !== pB) return pB - pA;
-      // Tie-break: default (e.g. date via API or stable sort)
-      return 0;
-    });
-
-    return filtered;
-  };
 
   // Filtered tasks for display
-  const filteredTasks = getFilteredTasks();
+
 
   // Main App Content - Single return with conditional rendering
   return (
@@ -1162,669 +1029,30 @@ export default function Home() {
             />
 
             {/* Daily Tasks Tab - Enhanced with Drag & Drop */}
+            {/* Daily Tasks Tab */}
             <TabsContent value="tasks" className="space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 className="text-2xl font-bold">Daily Tasks</h2>
-                  <p className="text-muted-foreground">
-                    Drag tasks to reorder - Track your progress
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  {!isMobile && (
-                    <Dialog
-                      open={showBulkImport}
-                      onOpenChange={setShowBulkImport}
-                    >
-                      <DialogTrigger asChild>
-                        <Button variant="outline">
-                          <Upload className="w-4 h-4 mr-2" />
-                          Bulk Import
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Bulk Import Tasks</DialogTitle>
-                          <DialogDescription>
-                            Import multiple tasks from JSON or CSV
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label>Format</Label>
-                            <Select
-                              value={importFormat}
-                              onValueChange={setImportFormat}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="json">JSON</SelectItem>
-                                <SelectItem value="csv">CSV</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Data</Label>
-                            <Textarea
-                              placeholder={
-                                importFormat === "json"
-                                  ? '[{"goalTitle": "Learn JavaScript", "title": "Complete tutorial", "date": "2025-01-15"}]'
-                                  : "goalTitle,title,date,time,description"
-                              }
-                              value={importData}
-                              onChange={(e) => setImportData(e.target.value)}
-                              className="min-h-[200px] font-mono text-sm"
-                            />
-                          </div>
-                          <Button onClick={handleBulkImport} className="w-full">
-                            Import Tasks
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  )}
-
-                  <Dialog
-                    open={showTaskDialog}
-                    onOpenChange={setShowTaskDialog}
-                  >
-                    {!isMobile && (
-                      <DialogTrigger asChild>
-                        <Button
-                          onClick={() => {
-                            setEditingTask(null);
-                            resetTaskForm();
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Task
-                        </Button>
-                      </DialogTrigger>
-                    )}
-                    <DialogContent className="max-h-[90vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle>
-                          {editingTask ? "Edit Task" : "Create New Task"}
-                        </DialogTitle>
-                        <DialogDescription>
-                          Link a task to one of your goals
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3 py-2">
-                        <div className="space-y-1">
-                          <Label htmlFor="task-title">Title *</Label>
-                          <Input
-                            id="task-title"
-                            placeholder="e.g., Complete tutorial chapter"
-                            value={taskTitle}
-                            onChange={(e) => setTaskTitle(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label htmlFor="task-description">
-                            Description
-                          </Label>
-                          <DescriptionEditor
-                            value={taskDescription}
-                            onChange={setTaskDescription}
-                            placeholder="Describe your task... Use - for lists, **text** for bold."
-                          />
-                        </div>
-
-                        {/* Checklist Section - Moved Here */}
-                        <div className="space-y-1">
-                          <div className="flex justify-between items-center">
-                            <Label>Checklist</Label>
-                            <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem} className="h-7 px-2 text-xs">
-                              <Plus className="w-3 h-3 mr-1" /> Add Item
-                            </Button>
-                          </div>
-                          <div className="space-y-1">
-                            {taskChecklist.map((item, index) => (
-                              <div key={item.id} className="flex items-center gap-2">
-                                <Checkbox
-                                  checked={item.completed}
-                                  onCheckedChange={() => handleToggleChecklistItem(item.id)}
-                                />
-                                <Input
-                                  value={item.text}
-                                  onChange={(e) => handleUpdateChecklistItem(item.id, e.target.value)}
-                                  placeholder="Checklist item"
-                                  className="flex-1 h-8 text-sm"
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleRemoveChecklistItem(item.id)}
-                                  className="h-8 w-8"
-                                >
-                                  <Trash2 className="w-4 h-4 text-muted-foreground" />
-                                </Button>
-                              </div>
-                            ))}
-                            {taskChecklist.length === 0 && (
-                              <p className="text-sm text-muted-foreground italic">No checklist items</p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label htmlFor="task-date">Date *</Label>
-                            <Input
-                              id="task-date"
-                              type="date"
-                              value={taskDate}
-                              onChange={(e) => setTaskDate(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label htmlFor="task-time">Time</Label>
-                            <Input
-                              id="task-time"
-                              type="time"
-                              value={taskTime}
-                              onChange={(e) => setTaskTime(e.target.value)}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Priority Selection */}
-                        <div className="space-y-1">
-                          <Label>Priority</Label>
-                          <Select value={taskPriority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setTaskPriority(v)}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Low">Low</SelectItem>
-                              <SelectItem value="Medium">Medium</SelectItem>
-                              <SelectItem value="High">High</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-1">
-                          <Label htmlFor="task-goal">Goal *</Label>
-                          <Select
-                            value={taskGoalId}
-                            onValueChange={setTaskGoalId}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select goal" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {goals.map((goal) => (
-                                <SelectItem key={goal.id} value={goal.id}>
-                                  {goal.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" onClick={resetTaskForm}>
-                            Cancel
-                          </Button>
-                          <Button onClick={handleSaveTask}>
-                            {editingTask ? "Update" : "Create"} Task
-                          </Button>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-              </div>
-
-              {/* Task Filters - New Tabs within Tasks */}
-              <div
-                className={`flex gap-2 mb-4 border-b pb-4 ${isMobile ? "overflow-x-auto" : ""
-                  }`}
-              >
-                <Button
-                  variant={taskSection === "all" ? "default" : "ghost"}
-                  size={isMobile ? "sm" : "sm"}
-                  onClick={() => setTaskSection("all")}
-                  className={isMobile ? "whitespace-nowrap" : ""}
-                >
-                  All Tasks
-                </Button>
-                <Button
-                  variant={taskSection === "today" ? "default" : "ghost"}
-                  size={isMobile ? "sm" : "sm"}
-                  onClick={() => setTaskSection("today")}
-                  className={isMobile ? "whitespace-nowrap" : ""}
-                >
-                  <Sun className="w-4 h-4 mr-1" />
-                  Today
-                </Button>
-                <Button
-                  variant={taskSection === "incomplete" ? "default" : "ghost"}
-                  size={isMobile ? "sm" : "sm"}
-                  onClick={() => setTaskSection("incomplete")}
-                  className={isMobile ? "whitespace-nowrap" : ""}
-                >
-                  <Circle className="w-4 h-4 mr-1" />
-                  Incomplete
-                </Button>
-                <Button
-                  variant={taskSection === "completed" ? "default" : "ghost"}
-                  size={isMobile ? "sm" : "sm"}
-                  onClick={() => setTaskSection("completed")}
-                  className={isMobile ? "whitespace-nowrap" : ""}
-                >
-                  <CheckCircle2 className="w-4 h-4 mr-1" />
-                  Completed
-                </Button>
-                <div
-                  className={`flex items-center gap-2 ${isMobile ? "ml-2" : "ml-4"
-                    }`}
-                >
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      setTaskViewMode(taskViewMode === "list" ? "grid" : "list")
-                    }
-                  >
-                    {taskViewMode === "list" ? (
-                      <LayoutGrid className="w-4 h-4" />
-                    ) : (
-                      <List className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
-
-              {/* Filter indicator */}
-              {selectedGoalFilter && (
-                <div className="mb-4 flex items-center gap-2">
-                  <Badge variant="default" className="text-sm">
-                    Filtering by goal:{" "}
-                    {goals.find((g) => g.id === selectedGoalFilter)?.title}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedGoalFilter(null)}
-                    className="h-7 text-xs px-2"
-                  >
-                    <X className="w-3 h-3" />
-                    Clear Filter
-                  </Button>
-                </div>
-              )}
-
-              {/* Task Count Badge */}
-              <div className="mb-4">
-                <Badge variant="outline" className="text-sm">
-                  {taskSection === "all" && "All Tasks"}
-                  {taskSection === "today" && "Today's Tasks"}
-                  {taskSection === "incomplete" && "Incomplete Tasks"}
-                  {taskSection === "completed" && "Completed Tasks"}
-                  {` (${filteredTasks.length})`}
-                </Badge>
-              </div>
-
-              {/* Tasks Display */}
-              <div
-                className={
-                  taskViewMode === "list"
-                    ? "space-y-3"
-                    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
-                }
-              >
-                {filteredTasks.length === 0 ? (
-                  <Card className="p-8 text-center">
-                    <CheckCircle2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">
-                      {selectedGoalFilter
-                        ? "No tasks for this goal"
-                        : `No ${taskSection} tasks`}
-                    </h3>
-                    <p className="text-muted-foreground mb-4">
-                      {selectedGoalFilter
-                        ? "Create tasks for this goal"
-                        : "Start by creating your first task"}
-                    </p>
-                    {isMobile ? null : (
-                      <Button onClick={() => setShowTaskDialog(true)}>
-                        <Plus className="w-4 h-4 mr-2" />
-                        {selectedGoalFilter
-                          ? "Add Task to This Goal"
-                          : "Create Your First Task"}
-                      </Button>
-                    )}
-                  </Card>
-                ) : (
-                  filteredTasks.map((task, index) => {
-                    const goal = goals.find((g) => g.id === task.goalId);
-                    const today = new Date().toISOString().split("T")[0];
-                    const isToday = task.date === today;
-                    const isDragging = draggedTaskId === task.id;
-
-                    return (
-                      <div
-                        key={task.id}
-                        draggable={!isMobile} // Disable drag on mobile
-                        onDragStart={
-                          !isMobile
-                            ? (e) => {
-                              e.dataTransfer.setData("text/plain", task.id);
-                              handleDragStart(task.id);
-                            }
-                            : undefined
-                        }
-                        onDragEnd={
-                          !isMobile ? () => handleDragEnd(task.id) : undefined
-                        }
-                        className={`transition-all ${isMobile ? "cursor-pointer" : "cursor-move"
-                          } ${isDragging
-                            ? "opacity-50 scale-95"
-                            : "hover:scale-[1.02]"
-                          }`}
-                      >
-                        <Card
-                          className={`hover:shadow-md transition-all ${task.completed ? "opacity-60" : ""
-                            }`}
-                        >
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              {/* Mobile: Larger touch targets */}
-                              {isMobile ? (
-                                <>
-                                  {/* Task Checkbox - Larger touch target */}
-                                  <div className="mt-1">
-                                    <Checkbox
-                                      checked={task.completed ?? false}
-                                      onCheckedChange={() =>
-                                        handleToggleTask(task.id)
-                                      }
-                                      className="w-6 h-6 data-[state=checked]:w-6 data-[state=checked]:h-6"
-                                    />
-                                  </div>
-
-                                  {/* Task Content - Full width for tap area */}
-                                  <div
-                                    className="flex-1 min-w-0 flex-grow"
-                                    onClick={() => {
-                                      setSelectedTask(task);
-                                      setShowTaskDetail(true);
-                                    }}
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1 min-w-0">
-                                        <h4
-                                          className={`font-medium ${task.completed
-                                            ? "line-through text-muted-foreground"
-                                            : ""
-                                            }`}
-                                        >
-                                          {task.title}
-                                        </h4>
-                                        {task.description && (
-                                          <p className="text-sm text-muted-foreground mt-1">
-                                            {task.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        {task.learnings &&
-                                          task.learnings.length > 0 && (
-                                            <Badge
-                                              variant="secondary"
-                                              className="text-xs"
-                                            >
-                                              <Lightbulb className="w-3 h-3 mr-1" />
-                                              {task.learnings.length}
-                                            </Badge>
-                                          )}
-                                        {task.notes &&
-                                          task.notes.length > 0 && (
-                                            <Badge
-                                              variant="secondary"
-                                              className="text-xs"
-                                            >
-                                              <StickyNote className="w-3 h-3 mr-1" />
-                                              {task.notes.length}
-                                            </Badge>
-                                          )}
-                                        {task.photos &&
-                                          task.photos.length > 0 && (
-                                            <Badge
-                                              variant="secondary"
-                                              className="text-xs"
-                                            >
-                                              <ImageIcon className="w-3 h-3 mr-1" />
-                                              {task.photos.length}
-                                            </Badge>
-                                          )}
-                                      </div>
-                                    </div>
-
-                                    {/* Task Meta */}
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                      <Badge
-                                        variant={
-                                          isToday ? "default" : "outline"
-                                        }
-                                        className="text-xs"
-                                      >
-                                        <Calendar className="w-3 h-3 mr-1" />
-                                        {task.date}
-                                      </Badge>
-                                      {task.time && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          <Clock className="w-3 h-3 mr-1" />
-                                          {task.time}
-                                        </Badge>
-                                      )}
-                                      {goal && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs"
-                                        >
-                                          {goal.title}
-                                        </Badge>
-                                      )}
-                                    </div>
-
-                                    {/* Photos Preview */}
-                                    {task.photos && task.photos.length > 0 && (
-                                      <div className="flex gap-2 mt-3">
-                                        {task.photos
-                                          .slice(0, 3)
-                                          .map((photo) => (
-                                            <div
-                                              key={photo.id}
-                                              className="w-12 h-12 rounded-md relative group"
-                                              style={{
-                                                backgroundColor: photo.url,
-                                              }}
-                                            >
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleRemovePhoto(
-                                                    task.id,
-                                                    photo.id
-                                                  );
-                                                }}
-                                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white rounded-md"
-                                              >
-                                                <X className="w-4 h-4" />
-                                              </button>
-                                            </div>
-                                          ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </>
-                              ) : (
-                                // Desktop: Original layout with drag handle
-                                <>
-                                  {/* Drag Handle */}
-                                  <div className="cursor-grab active:cursor-grabbing mt-1">
-                                    <GripVertical className="w-5 h-5 text-muted-foreground" />
-                                  </div>
-
-                                  {/* Task Checkbox */}
-                                  <Checkbox
-                                    checked={task.completed ?? false}
-                                    onCheckedChange={() =>
-                                      handleToggleTask(task.id)
-                                    }
-                                    className="mt-1"
-                                  />
-
-                                  {/* Task Content */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div>
-                                        <h4
-                                          className={`font-medium ${task.completed
-                                            ? "line-through text-muted-foreground"
-                                            : ""
-                                            }`}
-                                        >
-                                          {task.title}
-                                        </h4>
-                                        {task.description && (
-                                          <p className="text-sm text-muted-foreground mt-1">
-                                            {task.description}
-                                          </p>
-                                        )}
-                                      </div>
-                                      <div className="flex items-center gap-2">
-                                        {task.learnings &&
-                                          task.learnings.length > 0 && (
-                                            <Badge
-                                              variant="secondary"
-                                              className="text-xs"
-                                            >
-                                              <Lightbulb className="w-3 h-3 mr-1" />
-                                              {task.learnings.length}
-                                            </Badge>
-                                          )}
-                                        {task.notes &&
-                                          task.notes.length > 0 && (
-                                            <Badge
-                                              variant="secondary"
-                                              className="text-xs"
-                                            >
-                                              <StickyNote className="w-3 h-3 mr-1" />
-                                              {task.notes.length}
-                                            </Badge>
-                                          )}
-                                        {task.photos &&
-                                          task.photos.length > 0 && (
-                                            <Badge
-                                              variant="secondary"
-                                              className="text-xs"
-                                            >
-                                              <ImageIcon className="w-3 h-3 mr-1" />
-                                              {task.photos.length}
-                                            </Badge>
-                                          )}
-                                      </div>
-                                    </div>
-
-                                    {/* Task Meta */}
-                                    <div className="flex items-center gap-2 mt-2 flex-wrap">
-                                      <Badge
-                                        variant={
-                                          isToday ? "default" : "outline"
-                                        }
-                                        className="text-xs"
-                                      >
-                                        <Calendar className="w-3 h-3 mr-1" />
-                                        {task.date}
-                                      </Badge>
-                                      {task.time && (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs"
-                                        >
-                                          <Clock className="w-3 h-3 mr-1" />
-                                          {task.time}
-                                        </Badge>
-                                      )}
-                                      {goal && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs"
-                                        >
-                                          {goal.title}
-                                        </Badge>
-                                      )}
-                                    </div>
-
-                                    {/* Photos Preview */}
-                                    {task.photos && task.photos.length > 0 && (
-                                      <div className="flex gap-2 mt-3">
-                                        {task.photos
-                                          .slice(0, 3)
-                                          .map((photo) => (
-                                            <div
-                                              key={photo.id}
-                                              className="w-12 h-12 rounded-md relative group"
-                                              style={{
-                                                backgroundColor: photo.url,
-                                              }}
-                                            >
-                                              <button
-                                                onClick={() =>
-                                                  handleRemovePhoto(
-                                                    task.id,
-                                                    photo.id
-                                                  )
-                                                }
-                                                className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white rounded-md"
-                                              >
-                                                <X className="w-4 h-4" />
-                                              </button>
-                                            </div>
-                                          ))}
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  {/* Task Actions */}
-                                  <div className="flex gap-1 mt-3">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => {
-                                        setSelectedTask(task);
-                                        setShowTaskDetail(true);
-                                      }}
-                                    >
-                                      <Edit className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      onClick={() => handleDeleteTask(task.id)}
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              <TasksTab
+                tasks={tasks}
+                goals={goals}
+                currentUser={currentUser}
+                isMobile={isMobile}
+                onTasksChange={setTasks}
+                onSelectTask={(task) => {
+                  setSelectedTask(task);
+                  setShowTaskDetail(true);
+                }}
+                onToggleTask={handleToggleTask}
+                onDeleteTask={handleDeleteTask}
+                onAddTimelineEvent={addTimelineEvent}
+                onShowTaskDialog={() => {
+                  setEditingTask(null);
+                  resetTaskForm();
+                  setShowTaskDialog(true);
+                }}
+                onRemovePhoto={handleRemovePhoto}
+                selectedGoalFilter={selectedGoalFilter}
+                onSetSelectedGoalFilter={setSelectedGoalFilter}
+              />
             </TabsContent>
 
             {/* Revision Tab */}
@@ -1860,284 +1088,72 @@ export default function Home() {
           </Tabs>
 
           {/* Task Detail Dialog */}
-          <Dialog open={showTaskDetail} onOpenChange={setShowTaskDetail}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              {selectedTask && (
-                <>
-                  <DialogHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
-                        <DialogTitle>Task Details</DialogTitle>
-                        <DialogDescription>{selectedTask.title}</DialogDescription>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setEditingTask(selectedTask);
-                          setTaskTitle(selectedTask.title);
-                          setTaskDescription(selectedTask.description || "");
-                          setTaskDate(selectedTask.date);
-                          setTaskTime(selectedTask.time || "");
-                          setTaskGoalId(selectedTask.goalId);
-                          setTaskPriority(selectedTask.priority || 'Medium');
-                          setTaskChecklist(selectedTask.checklist || []);
-                          setShowTaskDetail(false);
-                          setShowTaskDialog(true);
-                        }}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Edit
-                      </Button>
-                    </div>
-                  </DialogHeader>
-                  <div className="space-y-6 py-4">
-                    {selectedTask.description && (
-                      <div>
-                        <h4 className="font-medium mb-2">Description</h4>
-                        <MarkdownDisplay content={selectedTask.description} />
-                      </div>
-                    )}
+          {/* Task Detail Dialog */}
+          <TaskDetailDialog
+            open={showTaskDetail}
+            onOpenChange={setShowTaskDetail}
+            selectedTask={selectedTask}
+            onEdit={() => {
+              if (selectedTask) {
+                setEditingTask(selectedTask);
+                setTaskTitle(selectedTask.title);
+                setTaskDescription(selectedTask.description || "");
+                setTaskDate(selectedTask.date);
+                setTaskTime(selectedTask.time || "");
+                setTaskGoalId(selectedTask.goalId);
+                setTaskPriority(selectedTask.priority || 'Medium');
+                setTaskChecklist(selectedTask.checklist || []);
+                setShowTaskDetail(false);
+                setShowTaskDialog(true);
+              }
+            }}
+            onChecklistToggle={handleTaskChecklistToggle}
+            onAddPhoto={handleAddPhoto}
+            onRemovePhoto={handleRemovePhoto}
+            onViewImage={setViewingImageUrl}
+            newLearning={newLearning}
+            setNewLearning={setNewLearning}
+            onAddLearning={handleAddLearning}
+            newNote={newNote}
+            setNewNote={setNewNote}
+            onAddNote={handleAddNote}
+          />
 
-                    <div className="flex gap-4 text-sm">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-muted-foreground" />
-                        {selectedTask.date}
-                      </div>
-                      {selectedTask.time && (
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-muted-foreground" />
-                          {selectedTask.time}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Checklist View */}
-                    {selectedTask.checklist && selectedTask.checklist.length > 0 && (
-                      <div className="mb-6">
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="font-medium flex items-center gap-2">
-                            <CheckSquare className="w-4 h-4" />
-                            Checklist ({selectedTask.checklist.filter(i => i.completed).length}/{selectedTask.checklist.length})
-                          </h4>
-                        </div>
-                        <div className="space-y-2">
-                          {selectedTask.checklist.map((item) => (
-                            <div key={item.id} className="flex items-start gap-2 p-2 rounded hover:bg-muted/50 transition-colors">
-                              <Checkbox
-                                checked={item.completed}
-                                onCheckedChange={() => handleTaskChecklistToggle(selectedTask.id, item.id)}
-                                className="mt-1"
-                              />
-                              <span className={`text-sm ${item.completed ? "line-through text-muted-foreground" : ""}`}>
-                                {item.text}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Photos Section */}
-                    <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <ImageIcon className="w-4 h-4" />
-                          Progress Photos ({selectedTask.photos?.length || 0})
-                        </h4>
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddPhoto(selectedTask.id)}
-                        >
-                          <Upload className="w-4 h-4 mr-1" />
-                          Add Photo
-                        </Button>
-                      </div>
-                      {selectedTask.photos && selectedTask.photos.length > 0 ? (
-                        <div className="grid grid-cols-4 gap-2">
-                          {selectedTask.photos.map((photo) => (
-                            <div key={photo.id} className="relative group">
-                              <img
-                                src={photo.url}
-                                alt="Progress photo"
-                                className="w-full aspect-square rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                onClick={() => setViewingImageUrl(photo.url)}
-                              />
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemovePhoto(selectedTask.id, photo.id);
-                                }}
-                                className="absolute top-1 right-1 bg-black/50 hover:bg-red-500/80 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all transform hover:scale-110"
-                                title="Remove photo"
-                              >
-                                <X className="w-3 h-3 text-white" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No photos yet
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Learnings Section */}
-                    <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <Lightbulb className="w-4 h-4" />
-                          What I Learned ({selectedTask.learnings?.length || 0})
-                        </h4>
-                      </div>
-                      {selectedTask.learnings &&
-                        selectedTask.learnings.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedTask.learnings.map((learning) => (
-                            <div
-                              key={learning.id}
-                              className="p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-800"
-                            >
-                              <p className="text-sm">{learning.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No learnings recorded
-                        </p>
-                      )}
-                      <div className="flex gap-2 mt-3">
-                        <Input
-                          placeholder="Add what you learned..."
-                          value={newLearning}
-                          onChange={(e) => setNewLearning(e.target.value)}
-                          onKeyPress={(e) =>
-                            e.key === "Enter" &&
-                            handleAddLearning(selectedTask.id)
-                          }
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddLearning(selectedTask.id)}
-                        >
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Notes Section */}
-                    <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <h4 className="font-medium flex items-center gap-2">
-                          <StickyNote className="w-4 h-4" />
-                          Important Notes ({selectedTask.notes?.length || 0})
-                        </h4>
-                      </div>
-                      {selectedTask.notes && selectedTask.notes.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedTask.notes.map((note) => (
-                            <div
-                              key={note.id}
-                              className="p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800"
-                            >
-                              <p className="text-sm">{note.content}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          No notes yet
-                        </p>
-                      )}
-                      <div className="flex gap-2 mt-3">
-                        <Input
-                          placeholder="Add an important note..."
-                          value={newNote}
-                          onChange={(e) => setNewNote(e.target.value)}
-                          onKeyPress={(e) =>
-                            e.key === "Enter" && handleAddNote(selectedTask.id)
-                          }
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => handleAddNote(selectedTask.id)}
-                        >
-                          Add
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </DialogContent>
-          </Dialog>
+          <TaskDialog
+            open={showTaskDialog}
+            onOpenChange={setShowTaskDialog}
+            taskTitle={taskTitle}
+            setTaskTitle={setTaskTitle}
+            taskDescription={taskDescription}
+            setTaskDescription={setTaskDescription}
+            taskDate={taskDate}
+            setTaskDate={setTaskDate}
+            taskTime={taskTime}
+            setTaskTime={setTaskTime}
+            taskPriority={taskPriority}
+            setTaskPriority={setTaskPriority}
+            taskGoalId={taskGoalId}
+            setTaskGoalId={setTaskGoalId}
+            taskChecklist={taskChecklist}
+            onAddChecklistItem={handleAddChecklistItem}
+            onUpdateChecklistItem={handleUpdateChecklistItem}
+            onRemoveChecklistItem={handleRemoveChecklistItem}
+            onToggleChecklistItem={handleToggleChecklistItem}
+            onSave={handleSaveTask}
+            onCancel={resetTaskForm}
+            goals={goals}
+            editingTask={editingTask}
+          />
 
           {/* Profile Dialog */}
-          <Dialog open={showProfile} onOpenChange={setShowProfile}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Profile</DialogTitle>
-                <DialogDescription>Manage your account</DialogDescription>
-              </DialogHeader>
-              {currentUser && (
-                <div className="space-y-4 py-4">
-                  <div className="flex items-center gap-4">
-                    <Avatar className="w-16 h-16">
-                      <AvatarFallback>
-                        {currentUser.name
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h3 className="font-semibold text-lg">
-                        {currentUser.name}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        @{currentUser.username}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Email: </span>
-                      <span className="font-medium">{currentUser.email}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">
-                        Member since:{" "}
-                      </span>
-                      <span className="font-medium">
-                        {new Date(currentUser.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">
-                        Total tasks:{" "}
-                      </span>
-                      <span className="font-medium">
-                        {analytics.totalTasks}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <Button
-                      variant="destructive"
-                      className="w-full"
-                      onClick={handleLogout}
-                    >
-                      Logout
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+          {/* Profile Dialog */}
+          <ProfileDialog
+            open={showProfile}
+            onOpenChange={setShowProfile}
+            currentUser={currentUser}
+            analytics={analytics}
+            onLogout={handleLogout}
+          />
 
           {/* Floating Action Button for Mobile */}
           {isMobile && (
@@ -2180,26 +1196,10 @@ export default function Home() {
         accept="image/*"
       />
 
-      <Dialog open={!!viewingImageUrl} onOpenChange={(open) => !open && setViewingImageUrl(null)}>
-        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-black/90 border-none shadow-2xl">
-          <DialogTitle className="sr-only">Photo Viewer</DialogTitle>
-          <div className="relative flex items-center justify-center min-h-[50vh] max-h-[90vh] w-full">
-            {viewingImageUrl && (
-              <img
-                src={viewingImageUrl}
-                alt="Full view"
-                className="max-w-full max-h-[90vh] object-contain"
-              />
-            )}
-            <button
-              onClick={() => setViewingImageUrl(null)}
-              className="absolute top-4 right-4 bg-black/50 p-2 rounded-full text-white hover:bg-black/80 transition-colors cursor-pointer z-50"
-            >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <PhotoViewer
+        url={viewingImageUrl}
+        onClose={() => setViewingImageUrl(null)}
+      />
     </>
   );
 }
