@@ -14,6 +14,7 @@ export interface Goal {
   category: string
   status: string
   targetDate: string | null
+  isPinned?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -26,6 +27,8 @@ export interface Task {
   time: string | null
   completed: boolean
   goalId: string
+  priority?: 'Low' | 'Medium' | 'High'
+  checklist?: { id: string; text: string; completed: boolean }[]
   goal?: {
     id: string
     title: string

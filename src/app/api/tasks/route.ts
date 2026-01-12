@@ -101,6 +101,14 @@ export async function GET(request: NextRequest) {
         } : null,
         photos: taskPhotos,
         learnings: taskLearnings,
+        goal: task.goal ? {
+          id: task.goal.id,
+          title: task.goal.title
+        } : null,
+        priority: task.priority,
+        checklist: task.checklist,
+        photos: taskPhotos,
+        learnings: taskLearnings,
         notes: taskNotes
       };
     });
@@ -119,7 +127,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, title, description, date, time, goalId } = body
+    const { userId, title, description, date, time, goalId, priority, checklist } = body
 
     if (!userId || !title || !date || !goalId) {
       return NextResponse.json(
@@ -138,7 +146,9 @@ export async function POST(request: NextRequest) {
           date,
           time,
           goal_id: goalId,
-          completed: false
+          completed: false,
+          priority: priority || 'Medium',
+          checklist: checklist || []
         }
       ])
       .select(`
@@ -189,6 +199,8 @@ export async function POST(request: NextRequest) {
         id: task.goal.id,
         title: task.goal.title
       } : null,
+      priority: task.priority,
+      checklist: task.checklist,
       photos: photosResult.data || [],
       learnings: learningsResult.data || [],
       notes: notesResult.data || []

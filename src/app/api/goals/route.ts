@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
         userId: goal.user_id,
         createdAt: goal.created_at,
         updatedAt: goal.updated_at,
+        isPinned: goal.is_pinned,
         _count: {
           tasks: taskCount
         }
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, title, description, category, status, targetDate } = body
+    const { userId, title, description, category, status, targetDate, isPinned } = body
 
     if (!userId || !title || !category) {
       return NextResponse.json(
@@ -91,7 +92,8 @@ export async function POST(request: NextRequest) {
           description,
           category,
           status: status || 'Active',
-          target_date: targetDate ? new Date(targetDate).toISOString() : null
+          target_date: targetDate ? new Date(targetDate).toISOString() : null,
+          is_pinned: isPinned || false
         }
       ])
       .select()
@@ -115,7 +117,8 @@ export async function POST(request: NextRequest) {
       targetDate: goal.target_date,
       userId: goal.user_id,
       createdAt: goal.created_at,
-      updatedAt: goal.updated_at
+      updatedAt: goal.updated_at,
+      isPinned: goal.is_pinned
     }
 
     return NextResponse.json({ goal: formattedGoal }, { status: 201 })

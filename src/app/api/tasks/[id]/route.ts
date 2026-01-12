@@ -9,7 +9,7 @@ export async function PUT(
   try {
     const body = await request.json()
     const { id } = await params; // Await params to resolve the promise
-    const { title, description, date, time, goalId } = body
+    const { title, description, date, time, goalId, priority, checklist } = body
 
     const { data: task, error } = await supabase
       .from('tasks')
@@ -18,7 +18,9 @@ export async function PUT(
         description,
         date,
         time,
-        goal_id: goalId
+        goal_id: goalId,
+        priority,
+        checklist
       })
       .eq('id', id)
       .select(`
@@ -50,7 +52,9 @@ export async function PUT(
       goal: task.goal ? {
         id: task.goal.id,
         title: task.goal.title
-      } : null
+      } : null,
+      priority: task.priority,
+      checklist: task.checklist
     }
 
     return NextResponse.json({ task: formattedTask })
@@ -121,7 +125,9 @@ export async function PATCH(
       goal: task.goal ? {
         id: task.goal.id,
         title: task.goal.title
-      } : null
+      } : null,
+      priority: task.priority,
+      checklist: task.checklist
     }
 
     return NextResponse.json({ task: formattedTask })

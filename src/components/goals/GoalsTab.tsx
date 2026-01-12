@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TabsContent } from '@/components/ui/tabs'
 import { toast } from '@/hooks/use-toast'
 import { Goal, Task } from '@/types'
-import { Target, Plus, Edit, Trash2, CheckCircle2, Calendar } from 'lucide-react'
+import { Target, Plus, Edit, Trash2, CheckCircle2, Calendar, Pin } from 'lucide-react'
 
 interface GoalsTabProps {
   goals: Goal[]
@@ -113,6 +113,42 @@ export function GoalsTab({
       toast({
         title: 'Error',
         description: 'Failed to save goal',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  const handleTogglePin = async (goal: Goal, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const newIsPinned = !goal.isPinned
+
+    // Optimistic update
+    const updatedGoals = goals.map(g =>
+      g.id === goal.id ? { ...g, isPinned: newIsPinned } : g
+    )
+    onGoalsChange(updatedGoals)
+
+    try {
+      const res = await fetch(`/api/goals/${goal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPinned: newIsPinned })
+      })
+
+      if (!res.ok) {
+        throw new Error('Failed to update pin status')
+      }
+
+      toast({ title: newIsPinned ? 'Goal pinned' : 'Goal unpinned' })
+    } catch (error) {
+      // Revert on error
+      const revertedGoals = goals.map(g =>
+        g.id === goal.id ? { ...g, isPinned: !newIsPinned } : g
+      )
+      onGoalsChange(revertedGoals)
+      toast({
+        title: 'Error',
+        description: 'Failed to update pin status',
         variant: 'destructive'
       })
     }
@@ -247,7 +283,12 @@ export function GoalsTab({
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {goals.map((goal) => {
+        {[...goals].sort((a, b) => {
+          // Sort by pinned status (pinned first)
+          if (a.isPinned && !b.isPinned) return -1
+          if (!a.isPinned && b.isPinned) return 1
+          return 0
+        }).map((goal) => {
           const progress = getGoalProgress(goal.id)
           const goalTasks = tasks.filter(t => t.goalId === goal.id)
 
@@ -259,9 +300,19 @@ export function GoalsTab({
                     <CardTitle className="text-lg">{goal.title}</CardTitle>
                     <CardDescription className="mt-1">{goal.description}</CardDescription>
                   </div>
-                  <Badge variant={goal.status === 'Active' ? 'default' : goal.status === 'Completed' ? 'secondary' : 'outline'}>
-                    {goal.status}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`h-8 w-8 ${goal.isPinned ? 'text-primary' : 'text-muted-foreground'}`}
+                      onClick={(e) => handleTogglePin(goal, e)}
+                    >
+                      <Pin className={`w-4 h-4 ${goal.isPinned ? 'fill-current' : ''}`} />
+                    </Button>
+                    <Badge variant={goal.status === 'Active' ? 'default' : goal.status === 'Completed' ? 'secondary' : 'outline'}>
+                      {goal.status}
+                    </Badge>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">

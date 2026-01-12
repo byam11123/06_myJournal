@@ -67,6 +67,7 @@ import {
   List,
   Sun,
   Circle,
+  CheckSquare, // Added for Checklist
 } from "lucide-react";
 
 // Types are now imported from @/types
@@ -115,6 +116,8 @@ export default function Home() {
   const [taskDate, setTaskDate] = useState("");
   const [taskTime, setTaskTime] = useState("");
   const [taskGoalId, setTaskGoalId] = useState("");
+  const [taskPriority, setTaskPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
+  const [taskChecklist, setTaskChecklist] = useState<{ id: string; text: string; completed: boolean }[]>([]);
 
   // Reminder form
   const [reminderTitle, setReminderTitle] = useState("");
@@ -423,10 +426,58 @@ export default function Home() {
     setTaskDate("");
     setTaskTime("");
     setTaskGoalId("");
+    setTaskPriority('Medium');
+    setTaskChecklist([]);
     setShowTaskDialog(false);
   };
 
+  const handleAddChecklistItem = () => {
+    setTaskChecklist([...taskChecklist, { id: Date.now().toString(), text: '', completed: false }]);
+  };
+
+  const handleUpdateChecklistItem = (id: string, text: string) => {
+    setTaskChecklist(taskChecklist.map(item => item.id === id ? { ...item, text } : item));
+  };
+
+  const handleRemoveChecklistItem = (id: string) => {
+    setTaskChecklist(taskChecklist.filter(item => item.id !== id));
+  };
+
+  const handleToggleChecklistItem = (id: string) => {
+    setTaskChecklist(taskChecklist.map(item => item.id === id ? { ...item, completed: !item.completed } : item));
+  };
+
   // Task functions
+  const handleTaskChecklistToggle = async (taskId: string, itemId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.checklist) return;
+
+    const newChecklist = task.checklist.map(item =>
+      item.id === itemId ? { ...item, completed: !item.completed } : item
+    );
+
+    // Optimistic Update
+    const updatedTask = { ...task, checklist: newChecklist };
+    setTasks(tasks.map(t => t.id === taskId ? updatedTask : t));
+    if (selectedTask && selectedTask.id === taskId) {
+      setSelectedTask(updatedTask);
+    }
+
+    try {
+      await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ checklist: newChecklist })
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update checklist",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveTask = async () => {
     if (!taskTitle || !taskDate || !taskGoalId) {
       toast({
@@ -450,6 +501,8 @@ export default function Home() {
             date: taskDate,
             time: taskTime,
             goalId: taskGoalId,
+            priority: taskPriority,
+            checklist: taskChecklist
           }),
         });
 
@@ -478,6 +531,8 @@ export default function Home() {
             date: taskDate,
             time: taskTime,
             goalId: taskGoalId,
+            priority: taskPriority,
+            checklist: taskChecklist
           }),
         });
 
@@ -1041,6 +1096,16 @@ export default function Home() {
       filtered = filtered.filter((t) => t.goalId === selectedGoalFilter);
     }
 
+    // Sort by Priority (High > Medium > Low)
+    filtered.sort((a, b) => {
+      const priorityWeight: Record<string, number> = { High: 3, Medium: 2, Low: 1 };
+      const pA = priorityWeight[a.priority || 'Medium'] || 2;
+      const pB = priorityWeight[b.priority || 'Medium'] || 2;
+      if (pA !== pB) return pB - pA;
+      // Tie-break: default (e.g. date via API or stable sort)
+      return 0;
+    });
+
     return filtered;
   };
 
@@ -1207,6 +1272,59 @@ export default function Home() {
                               value={taskTime}
                               onChange={(e) => setTaskTime(e.target.value)}
                             />
+                          </div>
+                        </div>
+
+                        {/* Priority Selection */}
+                        <div className="space-y-2">
+                          <Label>Priority</Label>
+                          <Select value={taskPriority} onValueChange={(v: 'Low' | 'Medium' | 'High') => setTaskPriority(v)}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Low">Low</SelectItem>
+                              <SelectItem value="Medium">Medium</SelectItem>
+                              <SelectItem value="High">High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Checklist Section */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <Label>Checklist</Label>
+                            <Button type="button" variant="outline" size="sm" onClick={handleAddChecklistItem}>
+                              <Plus className="w-3 h-3 mr-1" /> Add Item
+                            </Button>
+                          </div>
+                          <div className="space-y-2">
+                            {taskChecklist.map((item, index) => (
+                              <div key={item.id} className="flex items-center gap-2">
+                                <Checkbox
+                                  checked={item.completed}
+                                  onCheckedChange={() => handleToggleChecklistItem(item.id)}
+                                />
+                                <Input
+                                  value={item.text}
+                                  onChange={(e) => handleUpdateChecklistItem(item.id, e.target.value)}
+                                  placeholder="Checklist item"
+                                  className="flex-1 h-8 text-sm"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRemoveChecklistItem(item.id)}
+                                  className="h-8 w-8"
+                                >
+                                  <Trash2 className="w-4 h-4 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            ))}
+                            {taskChecklist.length === 0 && (
+                              <p className="text-sm text-muted-foreground italic">No checklist items</p>
+                            )}
                           </div>
                         </div>
                         <div className="space-y-2">
@@ -1727,8 +1845,31 @@ export default function Home() {
               {selectedTask && (
                 <>
                   <DialogHeader>
-                    <DialogTitle>Task Details</DialogTitle>
-                    <DialogDescription>{selectedTask.title}</DialogDescription>
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <DialogTitle>Task Details</DialogTitle>
+                        <DialogDescription>{selectedTask.title}</DialogDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingTask(selectedTask);
+                          setTaskTitle(selectedTask.title);
+                          setTaskDescription(selectedTask.description || "");
+                          setTaskDate(selectedTask.date);
+                          setTaskTime(selectedTask.time || "");
+                          setTaskGoalId(selectedTask.goalId);
+                          setTaskPriority(selectedTask.priority || 'Medium');
+                          setTaskChecklist(selectedTask.checklist || []);
+                          setShowTaskDetail(false);
+                          setShowTaskDialog(true);
+                        }}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
                   </DialogHeader>
                   <div className="space-y-6 py-4">
                     {selectedTask.description && (
@@ -1752,6 +1893,32 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+
+                    {/* Checklist View */}
+                    {selectedTask.checklist && selectedTask.checklist.length > 0 && (
+                      <div className="mb-6">
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="font-medium flex items-center gap-2">
+                            <CheckSquare className="w-4 h-4" />
+                            Checklist ({selectedTask.checklist.filter(i => i.completed).length}/{selectedTask.checklist.length})
+                          </h4>
+                        </div>
+                        <div className="space-y-2">
+                          {selectedTask.checklist.map((item) => (
+                            <div key={item.id} className="flex items-start gap-2 p-2 rounded hover:bg-muted/50 transition-colors">
+                              <Checkbox
+                                checked={item.completed}
+                                onCheckedChange={() => handleTaskChecklistToggle(selectedTask.id, item.id)}
+                                className="mt-1"
+                              />
+                              <span className={`text-sm ${item.completed ? "line-through text-muted-foreground" : ""}`}>
+                                {item.text}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Photos Section */}
                     <div>
